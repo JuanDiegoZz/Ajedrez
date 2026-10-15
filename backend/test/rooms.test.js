@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cancelRoom, createRoom, getRoomForSession, joinRoom, leaveRoom, listRooms, validateRoomName } from '../src/rooms.js';
+import { cancelRoom, createRoom, getRoomForSession, joinRoom, leaveRoom, listRooms, setRoomGame, validateRoomName } from '../src/rooms.js';
 
 function session(name) {
   return { id: `session-${name}-${Math.random()}`, name };
@@ -104,6 +104,21 @@ test('host leaving deletes the room and frees the guest session', () => {
   assert.equal(leaveRoom(host), null);
   assert.equal(getRoomForSession(guest), null);
   assert.equal(listRooms().some(({ id }) => id === room.id), false);
+});
+
+test('removing a finished room does not clear a participant newer room mapping', () => {
+  const host = session('Host');
+  const guest = session('Guest');
+  const oldRoom = createRoom(host, 'Partida terminada');
+  joinRoom(guest, oldRoom.id);
+  setRoomGame(oldRoom.id, 'finished-game');
+
+  leaveRoom(host, oldRoom.id, true);
+  const newRoom = createRoom(host, 'Nueva sala');
+  leaveRoom(guest, oldRoom.id, true);
+
+  assert.deepEqual(getRoomForSession(host), newRoom);
+  assert.equal(listRooms().some(({ id }) => id === oldRoom.id), false);
 });
 
 test('only host can cancel own waiting room; cancellation removes room', () => {

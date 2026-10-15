@@ -1,6 +1,6 @@
 # Ajedrez UX
 
-Aplicación universitaria de ajedrez para 2–5 personas en red local. Fase 4 añade el dominio autoritativo de partidas al frontend React, backend Node.js, PostgreSQL, Nginx y Compose.
+Aplicación universitaria de ajedrez para 2–5 personas en red local. Fase 5 integra el tablero React con partidas autoritativas del backend Node.js, PostgreSQL, Nginx y Compose.
 
 ## Arranque
 
@@ -18,7 +18,7 @@ Abre `http://localhost:8080`. La app conserva una sesión temporal al recargar y
 
 El nombre se mantiene en memoria en el backend. El navegador guarda solo `ajedrez_session`: un ID opaco en cookie `HttpOnly`, `SameSite=Lax`, `Path=/`, con duración renovable de 7200 segundos. No se guarda el nombre en `localStorage`. La cookie no usa `Secure` porque el acceso LAN es HTTP. La sesión vence tras dos horas sin actividad o al reiniciar el backend. No hay cuentas ni contraseñas.
 
-En el lobby, `Crear sala` abre un formulario breve. Al entrar la segunda sesión, la sala queda lista y el backend crea la partida: anfitrión con blancas, invitado con negras y turno inicial de blancas. El backend valida movimientos con `chess.js` 1.4.0; su posición actual usa FEN y conserva historial SAN en memoria para reglas como repetición. El lobby usa WebSocket same-origin `/ws`; las operaciones de sala y las consultas/comandos de dominio usan HTTP. No hay tablero visual todavía. Salas y partidas activas viven en memoria; solo partidas terminadas se archivan transaccionalmente en las tablas `games` y `moves`. PostgreSQL no guarda sesiones ni salas.
+En el lobby, `Crear sala` abre un formulario breve. Al entrar la segunda sesión, la sala queda lista y el backend crea la partida: anfitrión con blancas, invitado con negras y turno inicial de blancas. La pantalla muestra tablero orientado al color del jugador, destinos legales, capturas, último movimiento e historial. Click/tap selecciona pieza y destino; con teclado, usa Tab/flechas, Enter/espacio y Escape. El servidor valida las jugadas con `chess.js` 1.4.0; FEN representa la posición y el historial SAN en memoria permite reglas como repetición. El mismo WebSocket same-origin `/ws` actualiza lobby y snapshots de partida; consultas y comandos de sala, jugada y abandono usan HTTP. La promoción permite elegir dama, torre, alfil o caballo. Jaque, mate, tablas y abandono muestran resultado. Salas y partidas activas viven en memoria; solo partidas terminadas se archivan transaccionalmente en `games` y `moves`. PostgreSQL no guarda sesiones ni salas.
 
 Para detener servicios sin borrar los datos guardados:
 
@@ -49,9 +49,9 @@ La app debe estar levantada y el dispositivo debe poder alcanzar el equipo anfit
 
 ## Límites conocidos
 
-- El modo contra bot sigue deshabilitado hasta Fase 7. La sala lista anuncia inicio y colores. El servidor ya mantiene y valida el dominio de ajedrez; el tablero visual pertenece a la fase siguiente.
+- El modo contra bot sigue deshabilitado hasta Fase 7. Recuperación de desconexión con gracia de 60 segundos pertenece a Fase 6; al reiniciar backend, sesiones y partidas activas se pierden.
 - Las sesiones, salas y partidas activas viven en memoria; reiniciar el backend las elimina.
-- Cerrar pestaña no cancela la sala. Cancela una sala antes de que entre el segundo jugador; la salida de una partida activa quedará disponible desde la pantalla de partida.
+- Cerrar pestaña no cancela automáticamente una sala o partida. La recuperación completa de desconexión/reconexión corresponde a Fase 6.
 - El puerto predeterminado es 8080. Si otra aplicación lo ocupa, hay que liberarlo antes del arranque normal.
 - La prueba LAN desde un celular en la misma red pasó el 2026-10-15.
 - La conexión al puerto LAN se enlaza a todas las interfaces del anfitrión. Úsala solo en una red de confianza.

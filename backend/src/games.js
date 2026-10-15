@@ -41,7 +41,7 @@ function finishFromRules(game) {
   }
 }
 
-function publicGame(game) {
+function publicGame(game, sessionId) {
   return {
     id: game.id,
     roomId: game.roomId,
@@ -55,6 +55,7 @@ function publicGame(game) {
     lastMove: game.lastMove ? { ...game.lastMove } : null,
     result: game.result ? { ...game.result } : null,
     revision: game.revision,
+    ...(sessionId ? { you: sessionId === game.whiteSessionId ? 'white' : 'black' } : {}),
     ...(game.result ? { archiveStatus: game.archiveSaved ? 'saved' : 'pending' } : {}),
   };
 }
@@ -86,7 +87,7 @@ export function createGame(room, initialFen) {
 }
 
 export function getGame(sessionId, gameId) {
-  return publicGame(gameFor(sessionId, gameId));
+  return publicGame(gameFor(sessionId, gameId), sessionId);
 }
 
 export function getLegalMoves(sessionId, gameId, from) {
@@ -118,7 +119,7 @@ export function makeMove(sessionId, gameId, input) {
     if (JSON.stringify(previousRequest.command) !== JSON.stringify(command)) {
       throw new GameError('REQUEST_ID_REUSED', 'La solicitud ya se usó para otro movimiento.');
     }
-    return publicGame(game);
+    return publicGame(game, sessionId);
   }
   if (expectedRevision !== undefined && expectedRevision !== game.revision) {
     throw new GameError('STALE_REVISION', 'La partida cambió. Actualiza su estado antes de mover.');
@@ -153,7 +154,7 @@ export function makeMove(sessionId, gameId, input) {
   game.revision += 1;
   if (requestId !== undefined) game.lastRequest.set(sessionId, { requestId, command });
   finishFromRules(game);
-  return publicGame(game);
+  return publicGame(game, sessionId);
 }
 
 export function resignGame(sessionId, gameId) {
@@ -163,7 +164,7 @@ export function resignGame(sessionId, gameId) {
   game.finishedAt = new Date().toISOString();
   game.result = { winner: sessionId === game.whiteSessionId ? 'black' : 'white', reason: 'resignation' };
   game.revision += 1;
-  return publicGame(game);
+  return publicGame(game, sessionId);
 }
 
 export function getArchiveRecord(gameId) {

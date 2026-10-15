@@ -33,6 +33,7 @@ test('starts one authoritative game when a second session joins a room', async (
   assert.equal(joinedBody.room.status, 'ready');
   assert.equal(joinedBody.game.status, 'playing');
   assert.equal(joinedBody.game.turn, 'white');
+  assert.equal(joinedBody.game.you, 'black');
   assert.deepEqual(joinedBody.game.white, { name: 'Alex' });
   assert.deepEqual(joinedBody.game.black, { name: 'Sam' });
   assert.equal(JSON.stringify(joinedBody).includes(host.cookie), false);
@@ -50,7 +51,9 @@ test('starts one authoritative game when a second session joins a room', async (
     body: JSON.stringify({ from: 'e2', to: 'e4', color: 'black', playerId: guest.cookie, name: 'Sam', requestId: 'move-1', expectedRevision: 0 }),
   });
   assert.equal(moved.status, 200);
-  assert.equal((await moved.json()).game.turn, 'black');
+  const movedGame = (await moved.json()).game;
+  assert.equal(movedGame.turn, 'black');
+  assert.equal(movedGame.you, 'white');
 
   const retry = await fetch(`${base}/api/games/${joinedBody.game.id}/moves`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: host.cookie },

@@ -58,6 +58,7 @@ export function createRoom(session, value) {
     guestName: null,
     status: 'waiting',
     gameId: null,
+    finishedDepartures: new Set(),
   };
   rooms.set(room.id, room);
   roomBySession.set(session.id, room.id);
@@ -115,15 +116,25 @@ export function joinRoom(session, id) {
 
 function removeRoom(room) {
   rooms.delete(room.id);
-  roomBySession.delete(room.hostSessionId);
-  if (room.guestSessionId) roomBySession.delete(room.guestSessionId);
+  if (roomBySession.get(room.hostSessionId) === room.id) roomBySession.delete(room.hostSessionId);
+  if (room.guestSessionId && roomBySession.get(room.guestSessionId) === room.id) roomBySession.delete(room.guestSessionId);
 }
 
-export function leaveRoom(session, id) {
-  const room = activeRoom(session);
+export function leaveRoom(session, id, gameFinished = false) {
+  let room = activeRoom(session);
+  if (!room && gameFinished) {
+    const candidate = rooms.get(id);
+    if (candidate && (candidate.hostSessionId === session.id || candidate.guestSessionId === session.id)) room = candidate;
+  }
   if (!room) return null;
   if (id && room.id !== id) throw new RoomError('ROOM_NOT_FOUND', 'La sala ya no está disponible.', 404);
-  if (room.gameId) throw new RoomError('GAME_ACTIVE', 'La partida ya comenzó. La salida estará disponible desde la pantalla de partida.');
+  if (room.gameId) {
+    if (!gameFinished) throw new RoomError('GAME_ACTIVE', 'La partida sigue activa. Abandónala antes de volver al lobby.');
+    room.finishedDepartures.add(session.id);
+    roomBySession.delete(session.id);
+    if (room.finishedDepartures.size === 2) removeRoom(room);
+    return null;
+  }
   if (room.hostSessionId === session.id) {
     removeRoom(room);
     return null;

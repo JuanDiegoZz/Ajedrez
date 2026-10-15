@@ -1,27 +1,46 @@
 ﻿# 14 — Progreso, auditoría y evidencia
 
-## Estado actual — Fase 4 — 2026-10-15
+## Estado actual — Fase 5 — 2026-10-15
 
-**Fase 4: COMPLETADA — 2026-10-15.** Dominio de partida autoritativo y archivo final verificados según el roadmap. No se implementó tablero ni sincronización de movimientos por WebSocket.
+**Fase 5: COMPLETADA — 2026-10-15.** Tablero integrado y flujo humano A/B verificados según `12_ROADMAP.md`. No se avanzó a Fase 6.
+
+- [x] React renderiza tablero 8×8 desde FEN del servidor. `game.you`, derivado de la sesión autenticada, fija orientación y color; blanco abajo para blancas, negro abajo para negras.
+- [x] Casillas con labels accesibles y navegación de foco por flechas; selección por click/tap/Enter, destinos legales por API, anillos de captura, último movimiento, turno, jaque y resultado textual.
+- [x] Promoción muestra dama/torre/alfil/caballo. Playwright con FEN preparado y APIs interceptadas seleccionó caballo por teclado, envió `promotion=n`, mostró ♞ y restauró foco a a8. Reglas reales de promoción siguen cubiertas por tests backend de Fase 4.
+- [x] Confirmación de abandono enfoca “Continuar jugando”; Escape cancela. Resultado ofrece volver al lobby; tras salida de ambos, el lobby permite crear otra sala.
+- [x] Un WebSocket `/ws` por app recibe `game:subscribe`; backend verifica pertenencia y difunde snapshots personalizados a ambos después de movimientos/abandono. Comandos de dominio siguen HTTP; backend y `chess.js` conservan autoridad.
+- [x] `backend npm test`: 33/33 correctos, incluyendo snapshots WebSocket A/B, identidad de color por sesión y salida de sala terminada sin borrar otra sala nueva del participante.
+- [x] `frontend npm run build`: correcto. `docker compose config`, `docker compose up -d --build`, `docker compose ps` correctos; web/backend activos y PostgreSQL healthy.
+- [x] `http://localhost:8080/api/health`: `200 {"backend":"available","database":"available"}`; `pg_isready` confirmó PostgreSQL. Puerto web `0.0.0.0:8080`; backend y DB sin puertos host.
+- [x] Playwright con contextos independientes A/B cubrió entrada, crear/unir, orientación, 64 casillas, turno fuera de orden bloqueado, e2-e4, e7-e5, captura e5xd4, abandono confirmado, ambos resultados sincronizados y mate con mensaje de jaque/ganador. Sin errores de consola ni `pageerror`.
+- [x] Playwright probó el caso de ciclo: host abandona, crea sala nueva mientras rival aún está en sala terminada, el rival sale y se une a la sala nueva; ambas sesiones siguen ligadas correctamente.
+- [x] Playwright verificó enroque rey+torre, en passant con marcador de captura sobre d6 vacío y peón retirado de d5. Promoción probada con fixture preparado.
+- [x] Viewports 1440, 1024, 390 y 320 px; 390: `scrollWidth=375`, tablero 343 px. 320: `scrollWidth=305`, casilla 33.625 px. Focus visible; `prefers-reduced-motion: reduce` elimina animación.
+- [x] Sin librerías ni assets externos nuevos, tablero de reglas cliente, PostgreSQL por jugada, bot u otra función posterior. README, árbol, arquitectura, protocolo, decisión ADR-005 y este progreso actualizados.
+
+### Límites y pruebas de Fase 5
+
+- Interfaz de promoción usó snapshot y respuestas de prueba preparados por Playwright; legalidad y motor de promoción real se cubren en `games.test.js`/`games-api.test.js` de Fase 4.
+- La recuperación de WebSocket tras cortes, presencia/heartbeat y gracia de desconexión siguen en Fase 6. Cerrar pestaña no abandona la partida automáticamente.
+- Piezas usan glifos Unicode chess de fuentes del sistema; su forma puede variar ligeramente entre dispositivos.
+
+## Histórico — Fase 4 — 2026-10-15
+
+**Fase 4: COMPLETADA — 2026-10-15.** Dominio de partida autoritativo y archivo final verificados según el roadmap.
 
 - [x] Dependencia fijada `chess.js` 1.4.0; `Chess` del servidor decide legalidad, FEN, SAN, promoción, enroque, captura al paso, jaque, mate y tablas.
 - [x] Al unirse el segundo jugador, la sala `ready` asocia una partida en memoria: anfitrión/blancas, invitado/negras; blancas mueven primero.
 - [x] API HTTP autenticada obtiene snapshot, destinos legales, aplica movimientos, revisa turno/revisión y repite `requestId` idéntico sin duplicar.
 - [x] Snapshot incluye FEN, historial SAN, último movimiento, check, turno, resultado y revisión. No expone sesiones ni motor mutable.
 - [x] Resultado terminal archiva nombres, motivo, FEN y movimientos SAN en `games`/`moves` con transacción; reintenta cada 10 segundos si falla.
-- [x] `backend npm test`: 31 pruebas correctas, incluyendo API, duplicados, identidad, captura, promoción, enroque, al paso, jaque/mate, ahogado, material insuficiente, repetición, 50 movimientos y rollback de archivo.
-- [x] `docker compose config`, `docker compose up -d --build` y `docker compose ps`: correctos; web/backend activos y PostgreSQL healthy. Solo web publica `0.0.0.0:8080`.
-- [x] `/api/health`: `200 {"backend":"available","database":"available"}`; las tablas `games` y `moves` se crearon. Backend/PostgreSQL siguen sin puertos host.
-- [x] Playwright con tres contextos independientes cubrió entrada, lobby, sala lista, colores, turno inicial, tercer usuario rechazado (`409`/`403`), movimiento `e2-e4`, snapshot rival y health. Cero errores JavaScript; consola solo registró respuestas HTTP de error esperadas.
-- [x] Playwright comprobó viewports 1440, 390 y 320 px sin overflow. Archivo real de PostgreSQL verificó `result=1-0`, `end_reason=resignation` y un SAN `e4`; se eliminó solo ese registro de prueba.
-- [x] No se crearon tablas de sesiones/salas; no se implementó tablero, IA ni sincronización de jugadas WebSocket.
-- [x] README, árbol, ADR-004/006/007 y este progreso actualizados.
+- [x] `backend npm test`: 31 pruebas correctas en cierre de Fase 4, incluyendo API, duplicados, identidad, movimientos y archivo transaccional.
+- [x] Compose, `/api/health`, PostgreSQL y verificación Fase 1 LAN seguían operativos.
+- [x] No se añadieron tablas para salas/sesiones; el tablero visual y la sincronización WS se reservaron para Fase 5.
 
-### Límites y pruebas de Fase 4
+### Límites de Fase 4
 
-- El snapshot de partida usa HTTP; las pantallas actuales solo anuncian sala lista. Esta fase no presenta tablero ni actualiza al rival después de una jugada vía WebSocket.
-- Partidas activas viven en memoria. Reiniciar backend las elimina; un archivo aún pendiente de reintento también se pierde.
-- La salida visual de sala de Fase 3 no es todavía el flujo de abandono confirmado de una partida. Dominio ofrece `POST /api/games/:id/resign`; confirmación/resultado visible corresponde a integración de tablero.
+- Partidas activas vivían en memoria. Reiniciar backend las elimina; un archivo aún pendiente de reintento también se pierde.
+- La salida visual de sala no tenía confirmación ni resultado visible; el dominio ofrecía `POST /api/games/:id/resign`.
 
 ## Histórico — Fase 3 — 2026-10-15
 

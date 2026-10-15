@@ -63,6 +63,7 @@ Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. 
 - Razón: conservar el contrato pequeño y la autenticación de sesión del mismo origen.
 - Descartado: Socket.IO y WebSocket para comandos de partida en esta fase.
 - Consecuencia: Nginx proxya `/ws` same-origin con `Upgrade`; backend valida cookie y `Origin`. Se emite una lista completa para 2–5 personas.
+- Extensión aceptada en Fase 5: la misma conexión `/ws` admite `game:subscribe` y distribuye snapshots `game:state` a los dos jugadores autorizados. Comandos de movimiento y abandono continúan por HTTP según ADR-006; no se crea otra conexión ni se duplica validación.
 
 ### ADR-008 — Sala lista y colores fijos
 

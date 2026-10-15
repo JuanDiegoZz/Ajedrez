@@ -1,5 +1,6 @@
 import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import GameScreen from './GameScreen.jsx';
 import './styles.css';
 
 function ServiceStatus({ health }) {
@@ -25,6 +26,7 @@ function App() {
   const [health, setHealth] = useState(null);
   const [session, setSession] = useState(null);
   const [currentRoom, setCurrentRoom] = useState(null);
+  const [currentGame, setCurrentGame] = useState(null);
   const [sessionStatus, setSessionStatus] = useState('loading');
   const [sessionError, setSessionError] = useState('');
   const [name, setName] = useState('');
@@ -40,10 +42,17 @@ function App() {
   const [roomName, setRoomName] = useState('');
   const dialogRef = useRef(null);
   const currentRoomRef = useRef(null);
+  const currentGameRef = useRef(null);
+  const gameSubscriptionRef = useRef({ socket: null, id: null });
 
   function changeCurrentRoom(room) {
     currentRoomRef.current = room;
     setCurrentRoom(room);
+  }
+
+  function changeCurrentGame(game) {
+    currentGameRef.current = game;
+    setCurrentGame(game);
   }
 
   useEffect(() => {
@@ -74,6 +83,7 @@ function App() {
         if (!active) return;
         setSession(result);
         changeCurrentRoom(result?.room ?? null);
+        changeCurrentGame(result?.game ?? null);
         setSessionStatus('ready');
       })
       .catch(() => {
@@ -116,14 +126,25 @@ function App() {
           setSessionError(error.message);
           setSession(null);
           changeCurrentRoom(null);
+          changeCurrentGame(null);
         }
       });
+
+    function subscribeToGame(gameId) {
+      if (!gameId || socket?.readyState !== WebSocket.OPEN) return;
+      if (gameSubscriptionRef.current.socket === socket && gameSubscriptionRef.current.id === gameId) return;
+      gameSubscriptionRef.current = { socket, id: gameId };
+      socket.send(JSON.stringify({ type: 'game:subscribe', gameId }));
+    }
 
     function connect() {
       if (!active) return;
       setConnection('connecting');
       socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`);
-      socket.addEventListener('open', () => socket.send(JSON.stringify({ type: 'lobby:subscribe' })));
+      socket.addEventListener('open', () => {
+        socket.send(JSON.stringify({ type: 'lobby:subscribe' }));
+        subscribeToGame(currentRoomRef.current?.gameId);
+      });
       socket.addEventListener('message', (event) => {
         if (!active) return;
         let message;
@@ -138,12 +159,21 @@ function App() {
             setRoomMessage('La sala dejó de estar disponible. Volviste al lobby.');
           }
           changeCurrentRoom(message.room);
+          subscribeToGame(message.room?.gameId);
+        } else if (message.type === 'game:state') {
+          const known = currentGameRef.current;
+          if (currentRoomRef.current?.gameId === message.game.id
+            && (!known || known.id !== message.game.id || message.game.revision > known.revision
+              || (message.game.revision === known.revision && message.game.archiveStatus !== known.archiveStatus))) {
+            changeCurrentGame(message.game);
+          }
         } else if (message.type === 'error') {
           setRoomError(message.message || 'Se perdió la conexión con el lobby.');
         }
       });
       socket.addEventListener('close', () => {
         if (!active) return;
+        if (gameSubscriptionRef.current.socket === socket) gameSubscriptionRef.current = { socket: null, id: null };
         setConnection('disconnected');
         retryTimer = setTimeout(connect, 1500);
       });
@@ -185,6 +215,7 @@ function App() {
       if (!response.ok) throw new Error(result.error || 'No se pudo iniciar la sesión. Inténtalo de nuevo.');
       setSession(result);
       changeCurrentRoom(result.room ?? null);
+      changeCurrentGame(result.game ?? null);
     } catch (error) {
       setSessionError(error.message === 'Failed to fetch'
         ? 'No se pudo conectar. Comprueba que los servicios estén iniciados e inténtalo de nuevo.'
@@ -207,10 +238,13 @@ function App() {
         setSessionError('Tu sesión terminó. Vuelve a entrar.');
         setSession(null);
         changeCurrentRoom(null);
+        changeCurrentGame(null);
         throw new Error('Tu sesión terminó. Vuelve a entrar.');
       }
       if (!response.ok) throw new Error(result.error?.message || 'No se pudo completar la acción. Inténtalo de nuevo.');
       changeCurrentRoom(result.room ?? null);
+      if (result.game) changeCurrentGame(result.game);
+      else if (!result.room) changeCurrentGame(null);
       setRoomMessage(successMessage);
       return true;
     } catch (error) {
@@ -315,7 +349,22 @@ function App() {
         </div>
       )}
 
-      {sessionStatus === 'ready' && session && currentRoom && (
+      {sessionStatus === 'ready' && session && currentRoom?.gameId && currentGame?.id === currentRoom.gameId && (
+        <GameScreen game={currentGame} room={currentRoom} session={session} connection={connection}
+          onGameChange={(game) => {
+            if (game.id === currentGameRef.current?.id && game.revision >= currentGameRef.current.revision) changeCurrentGame(game);
+          }}
+          onReturnToLobby={async () => {
+            const response = await fetch(`/api/rooms/${encodeURIComponent(currentRoom.id)}/leave`, { method: 'POST' });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error?.message || 'No se pudo volver al lobby.');
+            changeCurrentRoom(null);
+            changeCurrentGame(null);
+            setRoomsRetry((value) => value + 1);
+          }} />
+      )}
+
+      {sessionStatus === 'ready' && session && currentRoom && !(currentRoom.gameId && currentGame?.id === currentRoom.gameId) && (
         <section className="room-view" aria-labelledby="room-title">
           <p className="eyebrow">Sala</p>
           <h2 id="room-title">{currentRoom.name}</h2>
@@ -327,7 +376,7 @@ function App() {
               ? <li><strong>{currentRoom.guestName}</strong><span>Invitado · Negras</span></li>
               : <li className="player-slot"><strong>Esperando otro jugador…</strong><span>Plaza 2 de 2</span></li>}
           </ol>
-          {currentRoom.status === 'ready' && <p className="description">La partida está lista. El tablero estará disponible en la siguiente fase.</p>}
+          {currentRoom.status === 'ready' && <p className="description">La partida está lista. Cargando el tablero…</p>}
           {roomMessage && <p className="success-message" role="status">{roomMessage}</p>}
           {roomError && <p className="form-error" role="alert">{roomError}</p>}
           <div className="actions">

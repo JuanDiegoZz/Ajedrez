@@ -1,6 +1,6 @@
 ﻿# 07 — Arquitectura mínima y ejecución LAN
 
-Estado: propuesta de especificación; aprobación pendiente en `13`. No hay implementación ni versiones instaladas.
+Estado: arquitectura vigente; infraestructura, sesiones, salas, dominio y tablero verificados hasta Fase 5. Decisiones aceptadas vigentes en `13`.
 
 ## Alternativas y elección
 
@@ -27,7 +27,7 @@ flowchart LR
 |---|---|---|
 | React | Pantallas, foco, selección, diálogo de promoción, envío pendiente, snapshot confirmado y animación | Legalidad final, identidad rival o resultado |
 | HTTP backend | Sesión temporal, lista/crear/unir/cancelar sala, iniciar bot, consultar snapshot y guardar resultado | Estado enviado arbitrariamente por cliente |
-| WebSocket | Suscripción de lobby/partida, intenciones de movimiento/abandono, snapshots y errores | Reglas propias separadas de servicio de partida |
+| WebSocket | Suscripción de lobby/partida, snapshots y errores | Comandos HTTP de sala/jugada/abandono; reglas propias separadas del servicio de partida |
 | Servicio de partida | Instancia de reglas, miembros, turnos, historial, revisión, resultado y conexión | Presentación visual |
 | chess.js | Generación y validación legal, FEN, SAN y detección de estados soportados | Red, sesiones o IA |
 | Bot | Calcular candidato sobre copia de posición y devolverlo con revisión | Mutar partida real o saltarse validación |

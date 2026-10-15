@@ -22,6 +22,7 @@ async function archiveGame(gameId) {
     if (record) {
       await archiveFinishedGame(pool, record);
       markGameArchived(gameId);
+      lobby.broadcastGame(gameId);
     }
   } catch (error) {
     retryScheduled = true;
@@ -183,12 +184,14 @@ const server = createServer(async (request, response) => {
         const input = await readJson(request);
         const game = makeMove(session.id, gameId, input);
         sendJson(response, 200, { game });
+        lobby.broadcastGame(game);
         if (game.status === 'finished') void archiveGame(gameId);
         return;
       }
       if (request.method === 'POST' && action === 'resign') {
         const game = resignGame(session.id, gameId);
         sendJson(response, 200, { game });
+        lobby.broadcastGame(game);
         void archiveGame(gameId);
         return;
       }
@@ -240,13 +243,18 @@ const server = createServer(async (request, response) => {
       if (roomAction[2] === 'join') {
         room = joinRoom(session, roomId);
         if (room.status === 'ready') {
-          game = createGame(getRoomGameData(roomId));
-          setRoomGame(roomId, game.id);
+          const createdGame = createGame(getRoomGameData(roomId));
+          setRoomGame(roomId, createdGame.id);
+          game = getGame(session.id, createdGame.id);
           room = getRoomForSession(session);
         }
       }
       else {
-        leaveRoom(session, roomId);
+        const currentRoom = getRoomForSession(session);
+        const gameFinished = currentRoom?.gameId
+          ? getGame(session.id, currentRoom.gameId).status === 'finished'
+          : false;
+        leaveRoom(session, roomId, gameFinished);
         room = getRoomForSession(session);
       }
       setSessionCookie(response, session.id);

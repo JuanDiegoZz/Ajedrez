@@ -1,4 +1,5 @@
 import WebSocket, { WebSocketServer } from 'ws';
+import { getGame } from './games.js';
 import { getRoomForSession, listRooms } from './rooms.js';
 import { getSession } from './sessions.js';
 
@@ -36,19 +37,29 @@ export function attachLobby(server) {
     }
 
     webSocketServer.handleUpgrade(request, socket, head, (webSocket) => {
-      clients.set(webSocket, { session, subscribed: false });
+      clients.set(webSocket, { session, subscribed: false, gameId: null });
       webSocket.on('error', () => {});
       webSocket.on('close', () => clients.delete(webSocket));
       webSocket.on('message', (data) => {
         let message;
         try { message = JSON.parse(data.toString()); } catch { message = null; }
-        if (message?.type !== 'lobby:subscribe') {
-          send(webSocket, { type: 'error', code: 'INVALID_MESSAGE', message: 'No se reconoció la solicitud. Vuelve a conectar.' });
+        if (message?.type === 'lobby:subscribe') {
+          clients.get(webSocket).subscribed = true;
+          send(webSocket, { type: 'lobby:state', rooms: listRooms() });
+          send(webSocket, { type: 'room:state', room: getRoomForSession(session) });
           return;
         }
-        clients.get(webSocket).subscribed = true;
-        send(webSocket, { type: 'lobby:state', rooms: listRooms() });
-        send(webSocket, { type: 'room:state', room: getRoomForSession(session) });
+        if (message?.type === 'game:subscribe' && typeof message.gameId === 'string') {
+          try {
+            const game = getGame(session.id, message.gameId);
+            clients.get(webSocket).gameId = game.id;
+            send(webSocket, { type: 'game:state', game });
+          } catch (error) {
+            send(webSocket, { type: 'error', code: error.code ?? 'GAME_NOT_FOUND', message: error.message });
+          }
+          return;
+        }
+        send(webSocket, { type: 'error', code: 'INVALID_MESSAGE', message: 'No se reconoció la solicitud. Vuelve a conectar.' });
       });
       webSocketServer.emit('connection', webSocket, request);
     });
@@ -62,5 +73,14 @@ export function attachLobby(server) {
     }
   }
 
-  return { webSocketServer, broadcast };
+  function broadcastGame(game) {
+    const gameId = typeof game === 'string' ? game : game.id;
+    for (const [webSocket, client] of clients) {
+      if (client.gameId === gameId) {
+        try { send(webSocket, { type: 'game:state', game: getGame(client.session.id, gameId) }); } catch { /* Session may expire before the next lobby refresh. */ }
+      }
+    }
+  }
+
+  return { webSocketServer, broadcast, broadcastGame };
 }

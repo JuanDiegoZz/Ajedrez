@@ -1,6 +1,12 @@
 ﻿# 09 — Multijugador y protocolo conceptual
 
-Estado: propuesta. WebSocket transporta mensajes JSON con un campo de tipo; los nombres con dos puntos no implican Socket.IO.
+WebSocket transporta mensajes JSON con un campo de tipo; los nombres con dos puntos no implican Socket.IO. Fase 5 implementa suscripción y snapshots de partida. Heartbeat, presencia y recuperación descritos aquí pertenecen a Fase 6.
+
+## Implementado en Fase 5
+
+- Cada cliente autorizado envía `game:subscribe` por la conexión `/ws` existente. El servidor verifica pertenencia y devuelve `game:state` personalizado, incluido `you` (`white` o `black`), sin IDs de sesión.
+- `POST /api/games/:id/moves` y `POST /api/games/:id/resign` siguen siendo comandos HTTP autoritativos. Tras aceptar una operación, backend envía snapshot actualizado a ambos jugadores suscritos. No se crea otro socket ni se envían movimientos por WebSocket.
+- El frontend acepta solo una revisión mayor para posición. Snapshot con la misma revisión se acepta únicamente para actualizar estado de archivo.
 
 ## Inicio paso a paso
 
@@ -20,15 +26,14 @@ Estado: propuesta. WebSocket transporta mensajes JSON con un campo de tipo; los 
 | Cliente → servidor | lobby:subscribe | Solicitar lista actual y actualizaciones de lobby |
 | Servidor → cliente | lobby:state | Lista completa disponible y revisión monotónica del lobby |
 | Cliente → servidor | game:subscribe | ID de partida; comprobar pertenencia y devolver snapshot completo |
-| Cliente → servidor | game:move | gameId, requestId, expectedRevision, from, to, promotion opcional |
-| Cliente → servidor | game:resign | gameId, requestId, expectedRevision; abandono confirmado en UI |
-| Servidor → cliente | game:state | Snapshot completo y requestId causante cuando corresponda; también sirve de confirmación |
-| Servidor → cliente | command:rejected | requestId, código estable, mensaje comprensible y revisión vigente; recuperar snapshot |
-| Servidor → cliente | game:presence | Miembros conectados, pausa y plazo restante del servidor |
-| Servidor → cliente | game:archive | Estado de guardado: pendiente, guardado o error |
-| Servidor → cliente | session:replaced | Otra pestaña tomó control; deshabilitar envío anterior |
+| Cliente → servidor | HTTP `POST /api/games/:id/moves` | from, to, promotion opcional, requestId y expectedRevision |
+| Cliente → servidor | HTTP `POST /api/games/:id/resign` | Abandono solo después de confirmar en UI |
+| Servidor → cliente | game:state | Snapshot completo a ambos miembros después de suscripción y mutación aceptada |
+| Servidor → cliente | HTTP error | Código estable, mensaje comprensible y estado sin cambios |
 
-Crear/unir/cancelar salas e iniciar bot son HTTP; no duplicarlos como comandos WebSocket. Lobby recibe lista completa tras cada cambio; con 2–5 usuarios no necesita deltas. Snapshot de game contiene ID, modo, miembros/colores, FEN, historial completo, revisión, turno, jaque, último movimiento, resultado/motivo y mapa de destinos legales del turno. Nunca incluye IDs secretos de sesión. Si destino es promoción, incluir opciones permitidas. Interfaz muestra destinos solo al jugador habilitado.
+Mensajes propuestos para Fase 6, no implementados todavía: `command:rejected`, `game:presence`, `game:archive` independiente y `session:replaced`.
+
+Crear/unir/cancelar salas e iniciar bot son HTTP; no duplicarlos como comandos WebSocket. Lobby recibe lista completa tras cada cambio; con 2–5 usuarios no necesita deltas. Snapshot real de game contiene ID, sala, jugadores/nombres, color `you`, FEN, historial SAN, revisión, turno, jaque, último movimiento y resultado/motivo. Nunca incluye IDs secretos de sesión ni motor mutable. Destinos legales se consultan mediante `GET /api/games/:id/legal-moves?from=...` para el jugador en turno.
 
 ## Revisión, duplicados y concurrencia
 

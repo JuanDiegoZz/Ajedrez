@@ -1,4 +1,4 @@
-# Árbol vigente — Fase 4
+# Árbol vigente — Fase 5
 
 Estructura de producto verificada el 2026-10-15. Se omiten `node_modules`, `dist` y datos locales generados.
 
@@ -27,6 +27,7 @@ ajedrez/
 │       ├── rooms-api.test.js
 │       ├── games.test.js
 │       ├── games-api.test.js
+│       ├── games-ws.test.js
 │       └── game-archive.test.js
 ├── frontend/
 │   ├── Dockerfile
@@ -37,6 +38,7 @@ ajedrez/
 │   ├── vite.config.js
 │   └── src/
 │       ├── main.jsx
+│       ├── GameScreen.jsx
 │       └── styles.css
 ├── docs/
 │   ├── 00_VISION.md … 14_PROGRESS.md
@@ -49,4 +51,4 @@ ajedrez/
 └── .codex/
 ```
 
-Fase 4 añade el dominio autoritativo `chess.js` y el archivo transaccional de partidas terminadas. El tablero visual, la sincronización de jugadas entre navegadores y el bot siguen fuera de esta fase. Las carpetas de datos locales y cachés de herramientas no forman parte del árbol de producto.
+Fase 5 añade el tablero React y snapshots de partida por el WebSocket existente. `chess.js` sigue siendo autoritativo en backend; bot y recuperación avanzada quedan fuera de alcance. Las carpetas de datos locales y cachés de herramientas no forman parte del árbol de producto.
