@@ -1,6 +1,6 @@
 # Ajedrez UX
 
-Aplicación universitaria de ajedrez para 2–5 personas en red local. La Fase 2 entrega entrada con nombre temporal y un lobby inicial, servido por Nginx con backend Node.js y PostgreSQL.
+Aplicación universitaria de ajedrez para 2–5 personas en red local. La Fase 3 entrega entrada temporal, lobby en vivo y salas humanas para dos personas, servido por Nginx con backend Node.js y PostgreSQL.
 
 ## Arranque
 
@@ -17,6 +17,8 @@ docker compose logs --tail=80
 Abre `http://localhost:8080`. La app conserva una sesión temporal al recargar y muestra el estado de frontend, backend y PostgreSQL. El endpoint `GET /api/health` consulta `SELECT 1` en PostgreSQL. Solo Nginx publica un puerto; backend y base de datos quedan en la red interna de Compose.
 
 El nombre se mantiene en memoria en el backend. El navegador guarda solo `ajedrez_session`: un ID opaco en cookie `HttpOnly`, `SameSite=Lax`, `Path=/`, con duración renovable de 7200 segundos. No se guarda el nombre en `localStorage`. La cookie no usa `Secure` porque el acceso LAN es HTTP. La sesión vence tras dos horas sin actividad o al reiniciar el backend. No hay cuentas ni contraseñas.
+
+En el lobby, `Crear sala` abre un formulario breve. El anfitrión espera en la sala; al entrar la segunda sesión queda lista automáticamente: anfitrión con blancas e invitado con negras. El lobby recibe cambios mediante WebSocket same-origin en `/ws`; crear, unirse, salir y cancelar usan HTTP. Las salas viven solo en memoria, admiten dos sesiones y se pierden al reiniciar el backend. Salir como invitado libera el lugar; salir como anfitrión elimina la sala. PostgreSQL no guarda salas.
 
 Para detener servicios sin borrar los datos guardados:
 
@@ -47,8 +49,9 @@ La app debe estar levantada y el dispositivo debe poder alcanzar el equipo anfit
 
 ## Límites conocidos
 
-- El lobby muestra el estado vacío. Crear/unirse a salas corresponde a Fase 3; jugar contra bot corresponde a Fase 7. Esas acciones aparecen deshabilitadas hasta su fase.
+- El modo contra bot sigue deshabilitado hasta Fase 7. La sala lista solo anuncia inicio y colores; tablero y reglas pertenecen a fases posteriores.
 - Las sesiones y salas activas son temporales y viven en memoria; reiniciar el backend las elimina.
+- Cerrar pestaña no cancela la sala. Usa `Cancelar sala` o `Salir de la sala`; las salas no tienen expiración automática por desconexión en esta fase.
 - El puerto predeterminado es 8080. Si otra aplicación lo ocupa, hay que liberarlo antes del arranque normal.
 - La prueba LAN desde un celular en la misma red pasó el 2026-10-15.
 - La conexión al puerto LAN se enlaza a todas las interfaces del anfitrión. Úsala solo en una red de confianza.

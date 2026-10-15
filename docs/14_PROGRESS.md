@@ -1,6 +1,38 @@
 ﻿# 14 — Progreso, auditoría y evidencia
 
-## Estado actual — Fase 2 — 2026-10-15
+## Estado actual — Fase 3 — 2026-10-15
+
+**Fase 3: COMPLETADA — 2026-10-15.** Salas humanas, sala lista e interacción en vivo verificadas según `12_ROADMAP.md`.
+
+- [x] Salas en memoria, ID UUID opaco, host/invitado ligados a cookie de sesión; el cliente no envía autoridad ni recibe IDs de sesión.
+- [x] Crear con nombre 2–40 y prellenado; listado solo de salas esperando; unión valida capacidad al mutar; cupo máximo de dos.
+- [x] Sala lista al entrar invitado; anfitrión blancas e invitado negras. No hay tablero ni reglas.
+- [x] Invitado puede salir y libera cupo; anfitrión cancela sala esperando o sale para eliminarla. Un invitado recibe aviso si el anfitrión cierra sala lista.
+- [x] API HTTP maneja autenticación, validación y errores tipados. WebSocket same-origin `/ws` autentica cookie y `Origin` y publica snapshots de lobby/sala.
+- [x] `backend npm test`: 14 pruebas correctas, incluidas API, auth, capacidad, carrera por último lugar, identidad, abandono y cancelación.
+- [x] `frontend npm run build`: correcto.
+- [x] `docker compose config` y `docker compose up -d --build`: correctos. `docker compose ps`: web/backend activos y PostgreSQL healthy.
+- [x] `/api/health`: `200 {"backend":"available","database":"available"}`; PostgreSQL ejecutó `SELECT 1`.
+- [x] Web publicado en `0.0.0.0:8080`; backend `3000/tcp` y PostgreSQL `5432/tcp` sin puertos host.
+- [x] Tabla PostgreSQL `rooms` no existe (`to_regclass('public.rooms') IS NULL`).
+- [x] Playwright con tres contextos aislados cubrió crear, espera, lobby vivo, unirse, tercer usuario rechazado, salida, cancelación, estado vacío, recarga y ausencia de IDs en UI.
+- [x] Playwright comprobó loading/desactivación, Escape y retorno de foco del diálogo, error legible HTTP 409, colores/nombres y viewports 390/320 px sin desborde horizontal.
+- [x] Playwright simuló cierre WebSocket: aparece “Reconectando al lobby…”, mantiene lista legible y reintenta sin error JavaScript.
+- [x] Sin errores JavaScript. Chromium informó un recurso HTTP 409 esperado al probar que el tercer usuario no entra.
+- [x] `/api/health`, frontend servido por Nginx y proxy HTTP/WS same-origin verificados tras el cambio.
+- [x] README, árbol, ADR-005/008 y este progreso actualizados. No se creó esquema ni funcionalidad de fase posterior.
+
+### Evidencia y límites de Fase 3
+
+- Escenario A/B/C: A creó “Prueba LAN”; B y C vieron la sala. B entró y ambos vieron la sala lista con anfitrión/blancas e invitado/negras. C intentó unirse con una lista deliberadamente obsoleta; backend respondió `409 ROOM_FULL`, UI explicó que estaba completa y la sala mantuvo dos jugadores.
+- Salida: B salió, A volvió a espera; A canceló y la sala desapareció. Una segunda prueba recargó ambos contextos mientras estaban listos; ambos conservaron nombre y rol. Cookie HttpOnly no fue visible a JavaScript.
+- Salida del anfitrión listo: Playwright confirmó eliminación, regreso del invitado al lobby con aviso y lista vacía.
+- Responsive: viewport 390 px produjo `scrollWidth 375`; viewport 320 px produjo `scrollWidth 305`; ambos menores al ancho del viewport.
+- Consola: camino normal y recarga sin errores; una respuesta 409 esperada genera aviso de recurso fallido de Chromium, capturada también como feedback comprensible.
+- La prueba de tres usuarios usó contextos aislados en Playwright, no tres equipos físicos. No se repitió desde un segundo dispositivo LAN en esta fase.
+- Una pestaña cerrada sin `Salir`/`Cancelar` no libera la sala; esta fase no implementa expiración automática de desconexión.
+
+## Estado histórico — Fase 2 — 2026-10-15
 
 **Fase 2: COMPLETADA — 2026-10-15**, según el alcance y la aceptación de `12_ROADMAP.md`.
 

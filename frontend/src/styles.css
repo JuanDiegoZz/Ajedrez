@@ -8,7 +8,7 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; min-height: 100vh; }
+body { margin: 0; min-width: 0; min-height: 100vh; }
 button, input { font: inherit; }
 .app-shell { width: min(100% - 2rem, 68rem); margin: 0 auto; padding: 2rem 0 3rem; }
 .app-header { display: flex; align-items: center; justify-content: space-between; gap: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #dbe3ec; }
@@ -22,7 +22,7 @@ p { color: #475569; line-height: 1.55; }
 .service-status div { display: flex; gap: 0.3rem; }
 .service-status dt { color: #475569; }
 .service-status dd { margin: 0; font-weight: 650; }
-.entry-card, .welcome-panel, .rooms-panel, .empty-state { background: #fff; border: 1px solid #dbe3ec; border-radius: 0.75rem; }
+.entry-card, .welcome-panel, .rooms-panel, .empty-state, .room-view { background: #fff; border: 1px solid #dbe3ec; border-radius: 0.75rem; }
 .entry-card { width: min(100%, 34rem); margin: 3rem auto 0; padding: clamp(1.25rem, 5vw, 2rem); }
 .entry-card h2 { margin-top: 0.5rem; }
 .description { margin-bottom: 1.5rem; }
@@ -42,14 +42,34 @@ button:focus-visible, input:focus-visible { outline: 3px solid #1d4ed8; outline-
 .welcome-panel h2 { margin-top: 0.5rem; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.65rem; margin: 1.25rem 0 0.75rem; }
 .welcome-panel .field-help { margin-bottom: 0; }
-.section-heading { margin-bottom: 1.25rem; }
+.section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
 .section-heading h2 { margin-bottom: 0; }
+.connection-status { margin: 0; font-size: 0.875rem; font-weight: 650; }
+.connection-status.connected { color: #166534; }
+.connection-status.disconnected, .connection-status.connecting { color: #92400e; }
 .empty-state { padding: 1.5rem; background: #f8fafc; }
 .empty-state p:last-child { margin-bottom: 0; }
 .empty-mark { display: block; margin-bottom: 0.6rem; color: #475569; font-size: 1.5rem; }
 .empty-state .secondary-button { margin-top: 0.5rem; }
 .notice { color: #334155; }
-.room-list { margin: 0; padding-left: 1.25rem; }
+.room-list { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.room-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-width: 0; padding: 1rem; border: 1px solid #dbe3ec; border-radius: 0.5rem; }
+.room-card h3 { overflow-wrap: anywhere; }
+.room-card p { margin-bottom: 0.25rem; }
+.room-card button { flex: 0 0 auto; }
+.room-view { width: min(100%, 44rem); margin: 2rem auto 0; padding: clamp(1.25rem, 4vw, 2rem); }
+.room-view > .connection-status { display: inline-block; margin: 0.5rem 0 1.5rem; padding: 0.4rem 0.65rem; color: #0f172a; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 0.35rem; }
+.player-list { display: grid; gap: 0.65rem; margin: 0 0 1.5rem; padding: 0; list-style: none; }
+.player-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1rem; padding: 0.85rem 1rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; }
+.player-list span { color: #475569; }
+.player-slot { background: #f8fafc; }
+.success-message { color: #166534; font-weight: 650; }
+.create-dialog { width: min(calc(100% - 2rem), 26rem); max-width: 26rem; padding: 1.5rem; color: inherit; border: 1px solid #94a3b8; border-radius: 0.75rem; }
+.create-dialog::backdrop { background: rgb(15 23 42 / 48%); }
+.create-dialog h2 { margin-top: 0.35rem; }
+.create-dialog .actions { justify-content: flex-end; }
+.create-dialog form > .actions { margin-bottom: 0; }
+.room-card button:disabled { flex-shrink: 0; }
 .service-error { margin: 1.5rem 0 0; }
 @media (max-width: 700px) {
   .app-shell { padding-top: 1.25rem; }
@@ -57,4 +77,11 @@ button:focus-visible, input:focus-visible { outline: 3px solid #1d4ed8; outline-
   .service-status { justify-content: flex-start; }
   .entry-card { margin-top: 1.5rem; }
   .lobby-layout { grid-template-columns: 1fr; margin-top: 1.25rem; }
+  .room-view { margin-top: 1.25rem; }
+}
+@media (max-width: 420px) {
+  .section-heading, .room-card { align-items: stretch; flex-direction: column; }
+  .room-card button { width: 100%; }
+  .section-heading { gap: 0.5rem; }
+  .player-list li { flex-direction: column; }
 }

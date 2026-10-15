@@ -32,19 +32,35 @@ Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. 
 - Contexto: el usuario necesita un nombre visible sin crear una cuenta.
 - Decisión: guardar sesiones en memoria con ID aleatorio opaco. `ajedrez_session` guarda solo ese ID en cookie `HttpOnly`, `SameSite=Lax`, `Path=/`, con `Max-Age=7200`; el nombre no es identificador ni credencial. No usa `Secure` porque el acceso aprobado es HTTP LAN.
 - Razón: conservar la sesión tras recargar sin guardar secretos o agregar autenticación.
-- Consecuencia: sesiones vencen tras dos horas sin actividad o al reiniciar backend. El navegador no guarda el nombre en `localStorage`; salas y controles de conexión quedan para sus fases.
+- Consecuencia: sesiones vencen tras dos horas sin actividad o al reiniciar backend. El navegador no guarda el nombre en `localStorage`.
+
+### ADR-005 — WebSocket para lobby
+
+- Estado: aceptada al autorizar Fase 3, 2026-10-15.
+- Contexto: el roadmap exige que dos contextos vean cambios de sala sin recargar.
+- Decisión: WebSocket nativo del navegador y `ws` en backend. `/ws` lleva solo suscripción y snapshots del lobby/sala; operaciones de sala siguen por HTTP.
+- Razón: conservar el contrato pequeño y la autenticación de sesión del mismo origen.
+- Descartado: Socket.IO y WebSocket para comandos de partida en esta fase.
+- Consecuencia: Nginx proxya `/ws` same-origin con `Upgrade`; backend valida cookie y `Origin`. Se emite una lista completa para 2–5 personas.
+
+### ADR-008 — Sala lista y colores fijos
+
+- Estado: aceptada en el alcance de Fase 3, 2026-10-15.
+- Contexto: la sala necesita indicar sin otro paso cuándo está completa.
+- Decisión: la entrada del invitado cambia la sala a `ready`; anfitrión recibe blancas e invitado negras.
+- Razón: feedback claro con menos decisiones y pasos.
+- Descartado: botón “Listo” o selección de color.
+- Consecuencia: esta fase anuncia que está lista y asigna colores; no inicia tablero ni reglas de ajedrez.
 
 ## Propuestas para revisión humana
 
-Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó con alcance limitado para Fase 2.
+Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fase 2; ADR-005 y ADR-008 se aceptaron dentro del alcance de Fase 3.
 
 | ID | Decisión propuesta | Razón y alternativa descartada | Consecuencia / detalle |
 |---|---|---|---|
 | ADR-004 | chess.js como reglas en servidor | Genera movimientos, valida, mantiene FEN/historial y detecta finales; no incluye IA. Descartar reglas propias | Versionar al implementar y probar integración. Destinos viajan al cliente. `04`, `07` |
-| ADR-005 | WebSocket nativo de navegador y ws en backend | Contrato pequeño, HTTP compartido; descartar Socket.IO para no añadir otra capa de protocolo | Implementar heartbeat, resuscripción y reintentos explícitos. `09` |
 | ADR-006 | Servidor autoritativo con snapshot completo, revisión y requestId | Evitar divergencia, doble envío y legalidad en cliente; descartar estado optimista como autoridad | Una mutación síncrona; historial completo para repetición. `08`, `09` |
 | ADR-007 | Memoria activa; PostgreSQL solo archivo final, dos tablas | Sesiones/salas temporales no justifican tablas; descartar persistencia por jugada y recuperación durable | Games/moves en transacción; caída puede perder activos y archivo pendiente. `08` |
-| ADR-008 | Inicio automático, anfitrión blancas, invitado negras | Reduce pasos y opciones; descartar botón listo y elección de color en MVP | Anunciar inicio/color; revancha humana vuelve al lobby. `03`, `06` |
 | ADR-009 | Bot minimax de dos medias jugadas, material y trabajador acotado | Considera respuesta rival; aleatorio no defiende, Stockfish excede alcance | Dificultad fija y defensa limitada al horizonte. `10` |
 | ADR-010 | Cuatro pantallas y diseño accesible desde inicio | Crear sala/promoción/abandono caben en diálogos; descartar pantallas y librerías visuales adicionales | Teclado, foco y movimiento reducido obligatorios; CSS primero. `02`, `06` |
 | ADR-011 | Un origen web en puerto LAN 8080, proxy API/WS y DB interna | Evita URLs localhost en clientes y CORS innecesario; descartar tres puertos públicos | Proxy con upgrade; pruebas reales de firewall/Wi-Fi. `07` |
@@ -56,7 +72,7 @@ Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó con alc
 
 | Pendiente | Quién / cuándo | Cómo resolver sin ampliar alcance |
 |---|---|---|
-| Aprobar MVP y ADR-004–014 | Responsable del proyecto, antes de sus fases | Revisar propuestas y políticas de tablas/desconexión/pérdida de activos |
+| Aprobar MVP y ADR-004, 006–007, 009–014 | Responsable del proyecto, antes de sus fases | Revisar propuestas y políticas de tablas/desconexión/pérdida de activos |
 | Autorizar implementación | Responsable del proyecto, después de revisión | Registrar autorización explícita en `14` |
 | Framework HTTP, cliente PostgreSQL y herramientas build/pruebas | Implementador, fase 1 | Context7, compatibilidad, costo mínimo; candidatos Express y SQL directo, sin ORM por defecto |
 | Versiones y licencia de dependencias/piezas | Implementador, fases 1 y 5 | Verificar fuentes actuales, fijar lockfile y atribuciones; sin assets remotos obligatorios |
