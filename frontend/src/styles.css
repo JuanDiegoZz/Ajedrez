@@ -47,6 +47,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #1d4ed8; outline-
 .connection-status { margin: 0; font-size: 0.875rem; font-weight: 650; }
 .connection-status.connected { color: #166534; }
 .connection-status.disconnected, .connection-status.connecting { color: #92400e; }
+.presence-banner { margin: .75rem 0; padding: .75rem 1rem; border: 1px solid #d9a441; border-radius: .65rem; background: #fff5d9; color: #593d0a; }
 .empty-state { padding: 1.5rem; background: #f8fafc; }
 .empty-state p:last-child { margin-bottom: 0; }
 .empty-mark { display: block; margin-bottom: 0.6rem; color: #475569; font-size: 1.5rem; }

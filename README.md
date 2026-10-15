@@ -1,6 +1,6 @@
 # Ajedrez UX
 
-Aplicación universitaria de ajedrez para 2–5 personas en red local. Fase 5 integra el tablero React con partidas autoritativas del backend Node.js, PostgreSQL, Nginx y Compose.
+Aplicación universitaria de ajedrez para 2–5 personas en red local. Fase 6 integra recuperación temporal y reconexión con partidas autoritativas del backend Node.js, PostgreSQL, Nginx y Compose.
 
 ## Arranque
 
@@ -19,6 +19,8 @@ Abre `http://localhost:8080`. La app conserva una sesión temporal al recargar y
 El nombre se mantiene en memoria en el backend. El navegador guarda solo `ajedrez_session`: un ID opaco en cookie `HttpOnly`, `SameSite=Lax`, `Path=/`, con duración renovable de 7200 segundos. No se guarda el nombre en `localStorage`. La cookie no usa `Secure` porque el acceso LAN es HTTP. La sesión vence tras dos horas sin actividad o al reiniciar el backend. No hay cuentas ni contraseñas.
 
 En el lobby, `Crear sala` abre un formulario breve. Al entrar la segunda sesión, la sala queda lista y el backend crea la partida: anfitrión con blancas, invitado con negras y turno inicial de blancas. La pantalla muestra tablero orientado al color del jugador, destinos legales, capturas, último movimiento e historial. Click/tap selecciona pieza y destino; con teclado, usa Tab/flechas, Enter/espacio y Escape. El servidor valida las jugadas con `chess.js` 1.4.0; FEN representa la posición y el historial SAN en memoria permite reglas como repetición. El mismo WebSocket same-origin `/ws` actualiza lobby y snapshots de partida; consultas y comandos de sala, jugada y abandono usan HTTP. La promoción permite elegir dama, torre, alfil o caballo. Jaque, mate, tablas y abandono muestran resultado. Salas y partidas activas viven en memoria; solo partidas terminadas se archivan transaccionalmente en `games` y `moves`. PostgreSQL no guarda sesiones ni salas.
+
+Si el WebSocket cae, el navegador reintenta y el servidor conserva sala/partida por 60 segundos desde que detecta la desconexión. La partida se pausa. Si el usuario vuelve con la misma cookie antes del vencimiento, recibe snapshot oficial y continúa. Si no vuelve, el rival gana por desconexión; si ambos siguen ausentes, la partida se interrumpe sin ganador. Un anfitrión desconectado oculta su sala esperando durante esa ventana; luego se elimina. Una pestaña nueva con la misma sesión sustituye a la anterior.
 
 Para detener servicios sin borrar los datos guardados:
 
@@ -49,9 +51,10 @@ La app debe estar levantada y el dispositivo debe poder alcanzar el equipo anfit
 
 ## Límites conocidos
 
-- El modo contra bot sigue deshabilitado hasta Fase 7. Recuperación de desconexión con gracia de 60 segundos pertenece a Fase 6; al reiniciar backend, sesiones y partidas activas se pierden.
-- Las sesiones, salas y partidas activas viven en memoria; reiniciar el backend las elimina.
-- Cerrar pestaña no cancela automáticamente una sala o partida. La recuperación completa de desconexión/reconexión corresponde a Fase 6.
+- El modo contra bot sigue deshabilitado hasta Fase 7.
+- Sesiones, salas, partidas activas y temporizadores de recuperación viven en memoria. Reiniciar backend los elimina; la partida activa no se recupera y la app solicita volver a entrar.
+- La gracia de 60 segundos empieza cuando el servidor detecta la desconexión; heartbeat consulta cada 10 segundos y un corte silencioso puede tardar hasta unos 20 segundos en detectarse.
+- El corte y la recuperación se probaron en Playwright con caída del WebSocket. No se hizo otro corte físico de red LAN en esta fase.
 - El puerto predeterminado es 8080. Si otra aplicación lo ocupa, hay que liberarlo antes del arranque normal.
 - La prueba LAN desde un celular en la misma red pasó el 2026-10-15.
 - La conexión al puerto LAN se enlaza a todas las interfaces del anfitrión. Úsala solo en una red de confianza.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cancelRoom, createRoom, getRoomForSession, joinRoom, leaveRoom, listRooms, setRoomGame, validateRoomName } from '../src/rooms.js';
+import { cancelRoom, createRoom, expireDisconnectedHost, getRoomForSession, joinRoom, leaveRoom, listRooms, markRoomDisconnected, reconnectRoomHost, setRoomGame, validateRoomName } from '../src/rooms.js';
 
 function session(name) {
   return { id: `session-${name}-${Math.random()}`, name };
@@ -140,6 +140,29 @@ test('prevents one session from holding two rooms and deduplicates host create',
   assert.deepEqual(createRoom(host, 'Otra sala'), original);
   captureError(() => joinRoom(host, 'other-room'), 'ROOM_NOT_FOUND');
   assert.equal(listRooms().length, countBefore + 1);
+});
+
+test('hides a waiting room while its host reconnects and restores it with the same session', () => {
+  const host = session('RecoveryHost');
+  const room = createRoom(host, 'Sala recuperable');
+  const deadline = Date.now() + 60_000;
+
+  markRoomDisconnected(host.id, deadline);
+  assert.equal(listRooms().some(({ id }) => id === room.id), false);
+  assert.equal(getRoomForSession(host).connection.status, 'disconnected');
+  assert.equal(reconnectRoomHost(host.id).id, room.id);
+  assert.equal(listRooms().some(({ id }) => id === room.id), true);
+});
+
+test('removes a waiting room after its host recovery deadline', () => {
+  const host = session('ExpiredHost');
+  const room = createRoom(host, 'Sala expirada');
+  const deadline = Date.now() + 60_000;
+  markRoomDisconnected(host.id, deadline);
+
+  assert.equal(expireDisconnectedHost(host.id, deadline).id, room.id);
+  assert.equal(getRoomForSession(host), null);
+  assert.equal(listRooms().some(({ id }) => id === room.id), false);
 });
 
 

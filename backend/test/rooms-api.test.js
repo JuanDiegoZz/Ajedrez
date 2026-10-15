@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { server } from '../src/server.js';
+import { createSession, getSession, sessionTtlMs } from '../src/sessions.js';
 
 async function start(t) {
   server.listen(0, '127.0.0.1');
@@ -77,5 +78,16 @@ test('room API authenticates sessions, enforces capacity, blocks orphaning a gam
   const cancelled = await fetch(`${base}/api/rooms/${extraRoom.id}`, { method: 'DELETE', headers: { Cookie: c.cookie } });
   assert.equal(cancelled.status, 200);
   assert.equal((await (await fetch(`${base}/api/rooms`, { headers: { Cookie: c.cookie } })).json()).rooms.length, 0);
+});
+
+test('session endpoint reports an expired server-side session clearly', async (t) => {
+  const base = await start(t);
+  const expired = createSession('Expired API');
+  getSession(expired.id, Date.now() + sessionTtlMs);
+
+  const response = await fetch(`${base}/api/session`, { headers: { Cookie: `ajedrez_session=${expired.id}` } });
+  assert.equal(response.status, 410);
+  assert.match((await response.json()).error, /servidor se reinició o tu sesión terminó/u);
+  assert.match(response.headers.get('set-cookie'), /Max-Age=0/u);
 });
 

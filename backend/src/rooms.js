@@ -30,6 +30,7 @@ function publicRoom(room) {
     status: room.status,
     gameId: room.gameId,
     players: room.guestSessionId ? 2 : 1,
+    connection: room.hostDisconnectedUntil ? { status: 'disconnected', reconnectUntil: room.hostDisconnectedUntil } : { status: 'connected' },
     hostColor: 'Blancas',
     guestColor: 'Negras',
   };
@@ -66,7 +67,7 @@ export function createRoom(session, value) {
 }
 
 export function listRooms() {
-  return [...rooms.values()].filter((room) => room.status === 'waiting').map(publicRoom);
+  return [...rooms.values()].filter((room) => room.status === 'waiting' && !room.hostDisconnectedUntil).map(publicRoom);
 }
 
 export function getRoomForSession(session) {
@@ -76,6 +77,28 @@ export function getRoomForSession(session) {
     roomBySession.delete(session.id);
     return null;
   }
+  return publicRoom(room);
+}
+
+export function markRoomDisconnected(sessionId, reconnectUntil) {
+  const room = rooms.get(roomBySession.get(sessionId));
+  if (!room || room.status !== 'waiting' || room.hostSessionId !== sessionId) return null;
+  room.hostDisconnectedUntil ??= reconnectUntil;
+  return publicRoom(room);
+}
+
+export function reconnectRoomHost(sessionId) {
+  const room = rooms.get(roomBySession.get(sessionId));
+  if (!room || room.hostSessionId !== sessionId || !room.hostDisconnectedUntil) return null;
+  delete room.hostDisconnectedUntil;
+  return publicRoom(room);
+}
+
+export function expireDisconnectedHost(sessionId, reconnectUntil) {
+  const room = rooms.get(roomBySession.get(sessionId));
+  if (!room || room.status !== 'waiting' || room.hostSessionId !== sessionId
+    || room.hostDisconnectedUntil !== reconnectUntil) return null;
+  removeRoom(room);
   return publicRoom(room);
 }
 
@@ -101,6 +124,7 @@ export function joinRoom(session, id) {
   const room = rooms.get(id);
   if (!room) throw new RoomError('ROOM_NOT_FOUND', 'La sala ya no existe. Actualiza la lista e inténtalo de nuevo.', 404);
   if (room.hostSessionId === session.id) throw new RoomError('HOST_CANNOT_JOIN', 'Ya eres anfitrión de esta sala.');
+  if (room.hostDisconnectedUntil) throw new RoomError('ROOM_HOST_DISCONNECTED', 'El anfitrión perdió la conexión. Espera a que se recupere o elige otra sala.');
   if (room.guestSessionId === session.id) return publicRoom(room);
   if (activeRoom(session)) throw new RoomError('SESSION_IN_ROOM', 'Ya estás en otra sala. Sal antes de unirte.');
   if (room.status !== 'waiting' || room.guestSessionId) {

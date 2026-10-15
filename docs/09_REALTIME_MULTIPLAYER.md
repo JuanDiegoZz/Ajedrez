@@ -1,12 +1,23 @@
 ﻿# 09 — Multijugador y protocolo conceptual
 
-WebSocket transporta mensajes JSON con un campo de tipo; los nombres con dos puntos no implican Socket.IO. Fase 5 implementa suscripción y snapshots de partida. Heartbeat, presencia y recuperación descritos aquí pertenecen a Fase 6.
+WebSocket transporta mensajes JSON con un campo de tipo; los nombres con dos puntos no implican Socket.IO. Fase 5 implementó suscripción y snapshots de partida. Fase 6 añade heartbeat, presencia y recuperación temporal sobre la misma conexión.
 
 ## Implementado en Fase 5
 
 - Cada cliente autorizado envía `game:subscribe` por la conexión `/ws` existente. El servidor verifica pertenencia y devuelve `game:state` personalizado, incluido `you` (`white` o `black`), sin IDs de sesión.
 - `POST /api/games/:id/moves` y `POST /api/games/:id/resign` siguen siendo comandos HTTP autoritativos. Tras aceptar una operación, backend envía snapshot actualizado a ambos jugadores suscritos. No se crea otro socket ni se envían movimientos por WebSocket.
-- El frontend acepta solo una revisión mayor para posición. Snapshot con la misma revisión se acepta únicamente para actualizar estado de archivo.
+- El frontend acepta revisión mayor para posición y snapshots con la misma revisión cuando cambia presencia, pausa o estado del archivo.
+
+## Implementado en Fase 6
+
+- Backend envía ping cada 10 s y termina sockets que no respondieron al ping anterior; un corte silencioso puede tardar hasta unos 20 s en detectarse. Cerrar pestaña, cortar red o perder el socket no elimina de inmediato sala ni partida.
+- Al detectar la caída, servidor pausa el juego y comparte `game:state` con `paused` y presencia por color. HTTP rechaza destinos legales y movimientos con `409 GAME_PAUSED`.
+- Gracia única de 60 s desde detección. Reabrir o recargar con la misma cookie conserva identidad y recupera sala/partida; el servidor devuelve snapshot oficial con FEN, turno, último movimiento, jugadores, color, presencia y resultado.
+- El cliente muestra pérdida/reintento/restablecimiento y reintenta a 1 s, 2 s y luego cada 5 s. Termina reintentos locales a los 80 s para cubrir la detección del heartbeat y la gracia de servidor.
+- Un WebSocket nuevo de la misma sesión reemplaza al anterior; el viejo recibe `session:replaced` y cierra con código 4001. El socket reemplazado no inicia reconexión.
+- Al vencer, si falta un jugador gana el rival con motivo `disconnect`; si faltan ambos, termina `interrupted` sin ganador. El archivo final usa la transacción existente de PostgreSQL y motivo diferenciado.
+- Una sala `waiting` cuyo anfitrión pierde conexión queda oculta del lobby y reservada durante 60 s. Si vuelve, se restaura; si vence, se elimina. Invitado desconectado antes de partida mantiene su asiento solo durante la misma ventana.
+- Reiniciar backend elimina sesiones, salas, partidas y timers activos. El endpoint de sesión responde 410 con explicación; no intenta resucitar estado perdido.
 
 ## Inicio paso a paso
 
@@ -31,7 +42,7 @@ WebSocket transporta mensajes JSON con un campo de tipo; los nombres con dos pun
 | Servidor → cliente | game:state | Snapshot completo a ambos miembros después de suscripción y mutación aceptada |
 | Servidor → cliente | HTTP error | Código estable, mensaje comprensible y estado sin cambios |
 
-Mensajes propuestos para Fase 6, no implementados todavía: `command:rejected`, `game:presence`, `game:archive` independiente y `session:replaced`.
+`session:replaced` y `recovery:expired` son mensajes de aviso implementados. `game:state` lleva presencia y pausa; no existe un mensaje separado `game:presence`, `command:rejected` ni canal `game:archive`.
 
 Crear/unir/cancelar salas e iniciar bot son HTTP; no duplicarlos como comandos WebSocket. Lobby recibe lista completa tras cada cambio; con 2–5 usuarios no necesita deltas. Snapshot real de game contiene ID, sala, jugadores/nombres, color `you`, FEN, historial SAN, revisión, turno, jaque, último movimiento y resultado/motivo. Nunca incluye IDs secretos de sesión ni motor mutable. Destinos legales se consultan mediante `GET /api/games/:id/legal-moves?from=...` para el jugador en turno.
 
@@ -50,7 +61,7 @@ Crear/unir/cancelar salas e iniciar bot son HTTP; no duplicarlos como comandos W
 
 - Servidor usa ping/pong de WebSocket cada 10 s y declara caída si falta respuesta al siguiente control. El navegador responde al protocolo; no usar métodos de ws propios de Node en navegador.
 - Cliente detecta close/error y reintenta a 1, 2 y luego cada 5 s mientras dure la recuperación. Al abrir, resuscribe y pide snapshot; socket abierto solo no habilita movimientos.
-- Desde detección del servidor hay 60 s de gracia. Pausar ambos jugadores y bot, mostrar plazo; se mantiene jaque/posición. Validar vencimiento en servidor también al reconectar.
+- Desde detección del servidor hay 60 s de gracia. Se pausa la partida y se mantiene jaque/posición. El vencimiento y la recuperación los decide el servidor.
 - Si vuelve antes del vencimiento, recuperar snapshot e historial y continuar el mismo turno. Descartar cálculo de bot obsoleto y recalcular cuando corresponda.
 - Si solo un humano sigue desconectado al vencer, rival conectado gana por desconexión. Es política casual explícita, no arbitraje de torneo por capacidad de mate.
 - Si ambos están desconectados, interrumpir sin ganador al vencer el primer plazo; no inventar victoria. Si en ese momento uno ya volvió, aplicar regla anterior al ausente.
@@ -58,7 +69,7 @@ Crear/unir/cancelar salas e iniciar bot son HTTP; no duplicarlos como comandos W
 - Sala esperando: reservar anfitrión durante los mismos 60 s, ocultarla del lobby mientras esté desconectado; al vencer eliminarla. Restablecerla si vuelve a tiempo.
 - Reinicio servidor: sesión no existe; informar “El servidor se reinició o tu sesión terminó; la partida no puede recuperarse”. No aplicar plazos a un juego inexistente.
 
-Estos límites necesitan ensayo de corte real de red. No se implementan relojes competitivos, recuperación durable, espectadores ni sockets distribuidos.
+Pruebas de Fase 6: suite backend con grace reducido, Playwright con dos contextos y caída real del WebSocket desde el navegador, y archivo timeout contra PostgreSQL. No se hizo un corte físico de Wi-Fi/LAN. No se implementan relojes competitivos, recuperación durable, espectadores ni sockets distribuidos.
 
 ## Errores esperados
 

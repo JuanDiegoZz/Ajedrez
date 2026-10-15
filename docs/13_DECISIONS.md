@@ -74,9 +74,25 @@ Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. 
 - Descartado: botón “Listo” o selección de color.
 - Consecuencia: esta fase anuncia que está lista y asigna colores; no inicia tablero ni reglas de ajedrez.
 
+### ADR-013 — Recuperación temporal por desconexión
+
+- Estado: aceptada al autorizar Fase 6, 2026-10-15.
+- Decisión: tras detectar una caída, pausar partida y reservar sesión, sala o partida por 60 s. Si no vuelve un jugador, gana el rival por `disconnect`; si no vuelve ninguno, terminar `interrupted` sin ganador. El anfitrión de una sala esperando conserva su sala oculta durante la misma ventana.
+- Razón: permitir refresh/cortes breves sin convertir el proyecto LAN en un sistema durable.
+- Descartado: pérdida inmediata, reintentos ilimitados o recuperación tras reinicio del backend.
+- Consecuencia: snapshot oficial se restaura por cookie de sesión; el timeout final usa el archivo transaccional existente. Heartbeat cada 10 s puede retrasar la detección de un corte silencioso.
+
+### ADR-015 — Una pestaña controladora por sesión
+
+- Estado: aceptada en Fase 6, 2026-10-15.
+- Decisión: WebSocket nuevo de la misma sesión sustituye al anterior; el anterior recibe `session:replaced` y cierre 4001.
+- Razón: evitar dos pestañas que envíen acciones simultáneas con la misma identidad.
+- Descartado: coordinación multi-tab y difusión de snapshots a sockets duplicados.
+- Consecuencia: pestaña sustituida muestra aviso y no reintenta; la cookie permite que la pestaña más nueva recupere la partida.
+
 ## Propuestas para revisión humana
 
-Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fase 2; ADR-004, 006 y 007 para Fase 4; ADR-005 y ADR-008 para Fase 3.
+Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fase 2; ADR-004, 006 y 007 para Fase 4; ADR-005 y ADR-008 para Fase 3; ADR-013 para Fase 6.
 
 | ID | Decisión propuesta | Razón y alternativa descartada | Consecuencia / detalle |
 |---|---|---|---|
@@ -84,20 +100,19 @@ Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fa
 | ADR-010 | Cuatro pantallas y diseño accesible desde inicio | Crear sala/promoción/abandono caben en diálogos; descartar pantallas y librerías visuales adicionales | Teclado, foco y movimiento reducido obligatorios; CSS primero. `02`, `06` |
 | ADR-011 | Un origen web en puerto LAN 8080, proxy API/WS y DB interna | Evita URLs localhost en clientes y CORS innecesario; descartar tres puertos públicos | Proxy con upgrade; pruebas reales de firewall/Wi-Fi. `07` |
 | ADR-012 | Tablas automáticas según política simplificada | Evitar reclamaciones y arbitraje competitivo; descartar afirmar reglas FIDE completas | Repetición/50 movimientos automáticos, causa visible. `04` |
-| ADR-013 | Gracia 60 s, pausa y snapshot; derrota por desconexión individual | Recuperación breve suficiente; descartar recuperación ilimitada o tras reinicio | Ambos ausentes: interrupción sin ganador. Bot se pausa. `09` |
 | ADR-014 | Evaluación formativa con cinco estudiantes y comparación A/B iterativa | Evidencia de eficacia, eficiencia y satisfacción; descartar porcentajes ficticios y generalización estadística | Likert propio; SUS solo opcional. `11` |
 
 ## Pendientes de validación, responsables y momento
 
 | Pendiente | Quién / cuándo | Cómo resolver sin ampliar alcance |
 |---|---|---|
-| Aprobar MVP y ADR-009–014 | Responsable del proyecto, antes de sus fases | Revisar alcance de bot, UX, LAN, desconexión y evaluación |
+| Aprobar ADR-009–012 y ADR-014 | Responsable del proyecto, antes de sus fases | Revisar bot, UX, LAN, reglas de tablas y evaluación |
 | Autorizar implementación | Responsable del proyecto, después de revisión | Registrar autorización explícita en `14` |
 | Framework HTTP, cliente PostgreSQL y herramientas build/pruebas | Implementador, fase 1 | Context7, compatibilidad, costo mínimo; candidatos Express y SQL directo, sin ORM por defecto |
 | Versiones y licencia de dependencias/piezas | Implementador, fases 1 y 5 | Verificar fuentes actuales, fijar lockfile y atribuciones; sin assets remotos obligatorios |
 | Proxy estático concreto y puerto backend interno | Implementador, fase 1 | Elegir opción pequeña y documentar configuración verificada |
 | Paleta y combinaciones reales | Implementador/diseñador, fase 5 | Medir contraste de piezas, casillas, marcadores y foco |
-| Tiempos de bot y objetivos LAN | Implementador, fases 6–7 | Medir en hardware de demo; ajustar solo con evidencia |
+| Tiempos de bot y objetivos LAN | Implementador, fase 7 | Medir en hardware de demo; ajustar solo con evidencia |
 | Disponibilidad de estudiantes y requisitos de rúbrica | Responsable académico, antes de fase 8 | Confirmar muestra, consentimiento y si requiere SUS o esquema específico |
 
 Estos pendientes no autorizan dejar sin especificar reglas del juego durante implementación. Si la rúbrica exige recuperación durable o tablas normalizadas adicionales, volver a revisar alcance antes de añadirlas.

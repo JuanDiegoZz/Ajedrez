@@ -76,8 +76,9 @@ function App() {
     let active = true;
     fetch('/api/session', { cache: 'no-store' })
       .then(async (response) => {
-        if (!response.ok) throw new Error();
-        return response.json();
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'No se pudo comprobar tu sesión. Escribe tu nombre para volver a entrar.');
+        return result;
       })
       .then((result) => {
         if (!active) return;
@@ -86,10 +87,10 @@ function App() {
         changeCurrentGame(result?.game ?? null);
         setSessionStatus('ready');
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
         setSessionStatus('ready');
-        setSessionError('No se pudo comprobar tu sesión. Escribe tu nombre para volver a entrar.');
+        setSessionError(error.message || 'No se pudo comprobar tu sesión. Escribe tu nombre para volver a entrar.');
       });
     return () => { active = false; };
   }, []);
@@ -99,6 +100,11 @@ function App() {
     let active = true;
     let socket;
     let retryTimer;
+    let connectionNoticeTimer;
+    let retryStartedAt = null;
+    let retryAttempt = 0;
+    const retryDelays = [1000, 2000, 5000];
+    const clientRecoveryWindowMs = 80_000;
     setRoomsStatus('loading');
     setRoomError('');
 
@@ -137,13 +143,32 @@ function App() {
       socket.send(JSON.stringify({ type: 'game:subscribe', gameId }));
     }
 
+    function endSession(message) {
+      if (!active) return;
+      setName(session.name);
+      setSessionError(message);
+      setSession(null);
+      changeCurrentRoom(null);
+      changeCurrentGame(null);
+      setSessionStatus('ready');
+    }
+
+    async function verifySession() {
+      try {
+        const response = await fetch('/api/session', { cache: 'no-store' });
+        const result = await response.json();
+        if (response.status === 410) endSession(result.error);
+        else if (response.ok && !result) endSession('Tu sesión ya no está disponible. Vuelve a entrar; la partida no puede recuperarse.');
+      } catch { /* The next retry will check the server again. */ }
+    }
+
     function connect() {
       if (!active) return;
       setConnection('connecting');
       socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`);
       socket.addEventListener('open', () => {
         socket.send(JSON.stringify({ type: 'lobby:subscribe' }));
-        subscribeToGame(currentRoomRef.current?.gameId);
+        subscribeToGame(currentRoomRef.current?.gameId ?? currentGameRef.current?.id);
       });
       socket.addEventListener('message', (event) => {
         if (!active) return;
@@ -152,7 +177,15 @@ function App() {
         if (message.type === 'lobby:state') {
           setRooms(message.rooms);
           setRoomsStatus('ready');
-          setConnection('connected');
+          if (retryStartedAt !== null) {
+            retryStartedAt = null;
+            retryAttempt = 0;
+            setConnection('restored');
+            clearTimeout(connectionNoticeTimer);
+            connectionNoticeTimer = setTimeout(() => setConnection('connected'), 3000);
+          } else {
+            setConnection('connected');
+          }
           setRoomError('');
         } else if (message.type === 'room:state') {
           if (!message.room && currentRoomRef.current) {
@@ -162,20 +195,43 @@ function App() {
           subscribeToGame(message.room?.gameId);
         } else if (message.type === 'game:state') {
           const known = currentGameRef.current;
-          if (currentRoomRef.current?.gameId === message.game.id
-            && (!known || known.id !== message.game.id || message.game.revision > known.revision
-              || (message.game.revision === known.revision && message.game.archiveStatus !== known.archiveStatus))) {
-            changeCurrentGame(message.game);
+          if ((message.game.mode === 'bot' && currentGameRef.current?.id === message.game.id)
+            || currentRoomRef.current?.gameId === message.game.id) {
+            if (!known || known.id !== message.game.id || message.game.revision > known.revision
+              || (message.game.revision === known.revision && (message.game.archiveStatus !== known.archiveStatus
+                || message.game.paused !== known.paused
+                || message.game.botThinking !== known.botThinking || message.game.botError !== known.botError
+                || message.game.presence?.white?.status !== known.presence?.white?.status
+                || message.game.presence?.black?.status !== known.presence?.black?.status))) {
+              changeCurrentGame(message.game);
+            }
           }
         } else if (message.type === 'error') {
           setRoomError(message.message || 'Se perdió la conexión con el lobby.');
+        } else if (message.type === 'session:replaced') {
+          setConnection('replaced');
+        } else if (message.type === 'recovery:expired') {
+          setRoomMessage(message.message);
         }
       });
-      socket.addEventListener('close', () => {
+      socket.addEventListener('close', (event) => {
         if (!active) return;
         if (gameSubscriptionRef.current.socket === socket) gameSubscriptionRef.current = { socket: null, id: null };
+        if (event.code === 4001) {
+          setConnection('replaced');
+          return;
+        }
+        if (retryStartedAt === null) retryStartedAt = Date.now();
         setConnection('disconnected');
-        retryTimer = setTimeout(connect, 1500);
+        void verifySession();
+        const elapsed = Date.now() - retryStartedAt;
+        if (elapsed >= clientRecoveryWindowMs) {
+          setConnection('expired');
+          return;
+        }
+        const delay = retryDelays[Math.min(retryAttempt, retryDelays.length - 1)];
+        retryAttempt += 1;
+        retryTimer = setTimeout(connect, Math.min(delay, clientRecoveryWindowMs - elapsed));
       });
       socket.addEventListener('error', () => socket.close());
     }
@@ -184,6 +240,7 @@ function App() {
     return () => {
       active = false;
       clearTimeout(retryTimer);
+      clearTimeout(connectionNoticeTimer);
       socket?.close();
     };
   }, [session, roomsRetry]);
@@ -266,11 +323,39 @@ function App() {
     if (created) setCreateOpen(false);
   }
 
-  const connectionText = connection === 'connected'
-    ? 'Lobby conectado'
-    : connection === 'disconnected'
-      ? 'Reconectando al lobby…'
-      : 'Conectando al lobby…';
+  async function startBotGame() {
+    if (roomAction) return;
+    setRoomAction('bot');
+    setRoomError('');
+    setRoomMessage('');
+    try {
+      const response = await fetch('/api/games/bot', { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || 'No se pudo iniciar la partida contra bot.');
+      changeCurrentRoom(null);
+      changeCurrentGame(result.game);
+      const socket = gameSubscriptionRef.current.socket;
+      if (socket?.readyState === WebSocket.OPEN && gameSubscriptionRef.current.id !== result.game.id) {
+        gameSubscriptionRef.current = { socket, id: result.game.id };
+        socket.send(JSON.stringify({ type: 'game:subscribe', gameId: result.game.id }));
+      }
+      return true;
+    } catch (error) {
+      setRoomError(error.message === 'Failed to fetch'
+        ? 'No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.'
+        : error.message || 'No se pudo iniciar la partida. Inténtalo de nuevo.');
+      return false;
+    } finally {
+      setRoomAction('');
+    }
+  }
+
+  const connectionText = {
+    connected: 'Lobby conectado', restored: 'Conexión restablecida.',
+    disconnected: 'Conexión perdida. Intentando reconectar…', connecting: 'Conectando al lobby…',
+    expired: 'Tiempo de recuperación agotado. Recarga para comprobar el estado.',
+    replaced: 'Esta sesión se abrió en otra pestaña.',
+  }[connection] ?? 'Conectando al lobby…';
 
   return (
     <main className="app-shell">
@@ -299,7 +384,7 @@ function App() {
         </section>
       )}
 
-      {sessionStatus === 'ready' && session && !currentRoom && (
+      {sessionStatus === 'ready' && session && !currentRoom && !currentGame && (
         <div className="lobby-layout">
           <section className="welcome-panel" aria-labelledby="welcome-title">
             <p className="eyebrow">Lobby</p>
@@ -312,9 +397,11 @@ function App() {
                 setRoomError('');
                 setCreateOpen(true);
               }}>Crear sala</button>
-              <button className="secondary-button" type="button" disabled aria-describedby="bot-help">Jugar contra bot</button>
+              <button className="secondary-button" type="button" disabled={Boolean(roomAction)} onClick={startBotGame}>
+                {roomAction === 'bot' ? 'Iniciando…' : 'Jugar contra bot'}
+              </button>
             </div>
-            <p id="bot-help" className="field-help">Las partidas contra bot llegarán en una fase posterior.</p>
+            {roomError && <p className="form-error" role="alert">{roomError}</p>}
           </section>
 
           <section className="rooms-panel" aria-labelledby="rooms-title">
@@ -349,26 +436,38 @@ function App() {
         </div>
       )}
 
-      {sessionStatus === 'ready' && session && currentRoom?.gameId && currentGame?.id === currentRoom.gameId && (
+      {sessionStatus === 'ready' && session && currentGame
+        && (currentGame.mode === 'bot' || currentRoom?.gameId === currentGame.id) && (
         <GameScreen game={currentGame} room={currentRoom} session={session} connection={connection}
           onGameChange={(game) => {
             if (game.id === currentGameRef.current?.id && game.revision >= currentGameRef.current.revision) changeCurrentGame(game);
           }}
           onReturnToLobby={async () => {
-            const response = await fetch(`/api/rooms/${encodeURIComponent(currentRoom.id)}/leave`, { method: 'POST' });
+            const path = currentGame.mode === 'bot'
+              ? `/api/games/${encodeURIComponent(currentGame.id)}/leave`
+              : `/api/rooms/${encodeURIComponent(currentRoom.id)}/leave`;
+            const response = await fetch(path, { method: 'POST' });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error?.message || 'No se pudo volver al lobby.');
             changeCurrentRoom(null);
             changeCurrentGame(null);
             setRoomsRetry((value) => value + 1);
-          }} />
+          }} onNewBotGame={startBotGame} />
       )}
 
       {sessionStatus === 'ready' && session && currentRoom && !(currentRoom.gameId && currentGame?.id === currentRoom.gameId) && (
         <section className="room-view" aria-labelledby="room-title">
           <p className="eyebrow">Sala</p>
           <h2 id="room-title">{currentRoom.name}</h2>
-          <p className="connection-status">{currentRoom.status === 'waiting' ? 'Esperando jugador' : 'Sala lista'}</p>
+          <p className="connection-status" role="status">{currentRoom.connection?.status === 'disconnected'
+            ? 'Conexión perdida. Intentando recuperar esta sala…'
+            : connection === 'expired'
+              ? 'No se pudo restablecer a tiempo. Recarga para comprobar el estado de la sala.'
+              : connection === 'replaced'
+                ? 'Esta sesión se abrió en otra pestaña. Esta pestaña ya no controla la sala.'
+                : connection === 'disconnected'
+                  ? 'Conexión perdida. Intentando reconectar…'
+                  : currentRoom.status === 'waiting' ? 'Esperando jugador' : 'Sala lista'}</p>
           <h3>Jugadores</h3>
           <ol className="player-list">
             <li><strong>{currentRoom.hostName}</strong><span>Anfitrión · Blancas</span></li>

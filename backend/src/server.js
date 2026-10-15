@@ -4,14 +4,73 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 import { createSession, getSession, sessionTtlMs, validateName } from './sessions.js';
 import { cancelRoom, createRoom, getRoomForSession, getRoomGameData, joinRoom, leaveRoom, listRooms, setRoomGame } from './rooms.js';
-import { createGame, getArchiveRecord, getGame, getLegalMoves, makeMove, markGameArchived, resignGame } from './games.js';
+import {
+  applyBotMove, createBotGame, createGame, getArchiveRecord, getBotSearchInput, getGame,
+  getGameForSession, getLegalMoves, leaveBotGame, makeMove, markGameArchived,
+  retryBotTurn, resignGame, setBotSearchError,
+} from './games.js';
 import { archiveFinishedGame, initializeGameArchive } from './game-archive.js';
 import { attachLobby } from './lobby.js';
+import { startBotWorker } from './bot.js';
 
 const { Pool } = pg;
 const pool = new Pool();
 const port = Number(process.env.PORT || 3000);
 const archiveRetries = new Set();
+const botJobs = new Map();
+
+function cancelBotTurn(gameId) {
+  const job = botJobs.get(gameId);
+  if (job && !job.cancelled) {
+    job.cancelled = true;
+    job.termination = job.worker.cancel();
+  }
+}
+
+function queueBotTurn(gameId) {
+  if (botJobs.has(gameId)) return;
+  const input = getBotSearchInput(gameId);
+  if (!input) return;
+  if (botJobs.size >= 2) {
+    const game = setBotSearchError(gameId, input.revision);
+    if (game) lobby.broadcastGame(game);
+    return;
+  }
+
+  const job = { revision: input.revision, worker: startBotWorker(input.history), cancelled: false, termination: null };
+  botJobs.set(gameId, job);
+  job.worker.promise.then(async (result) => {
+    if (botJobs.get(gameId) !== job) return;
+    if (job.cancelled) {
+      await job.termination;
+      botJobs.delete(gameId);
+      if (getBotSearchInput(gameId)) queueBotTurn(gameId);
+      return;
+    }
+    botJobs.delete(gameId);
+    if (!result.move) {
+      const failed = setBotSearchError(gameId, input.revision);
+      if (failed) lobby.broadcastGame(failed);
+      return;
+    }
+    const game = applyBotMove(gameId, input.revision, result.move);
+    if (game) {
+      lobby.broadcastGame(game);
+      if (game.status === 'finished') void archiveGame(gameId);
+    } else {
+      const current = getBotSearchInput(gameId);
+      if (current) queueBotTurn(gameId);
+    }
+  }).catch(async () => {
+    if (botJobs.get(gameId) !== job) return;
+    if (job.cancelled) await job.termination;
+    if (botJobs.get(gameId) !== job) return;
+    botJobs.delete(gameId);
+    const game = setBotSearchError(gameId, input.revision);
+    if (game) lobby.broadcastGame(game);
+    else if (getBotSearchInput(gameId)) queueBotTurn(gameId);
+  });
+}
 
 async function archiveGame(gameId) {
   if (archiveRetries.has(gameId)) return;
@@ -107,20 +166,30 @@ const server = createServer(async (request, response) => {
 
     if (request.method === 'GET') {
       if (!existingSession) {
-        if (sessionId) clearSessionCookie(response);
+        if (sessionId) {
+          clearSessionCookie(response);
+          sendJson(response, 410, { error: 'El servidor se reinició o tu sesión terminó; la partida no puede recuperarse. Vuelve a entrar.' });
+          return;
+        }
         sendJson(response, 200, null);
         return;
       }
       const room = getRoomForSession(existingSession);
       setSessionCookie(response, existingSession.id);
-      sendJson(response, 200, { name: existingSession.name, room, game: room?.gameId ? getGame(existingSession.id, room.gameId) : null });
+      sendJson(response, 200, {
+        name: existingSession.name, room,
+        game: room?.gameId ? getGame(existingSession.id, room.gameId) : getGameForSession(existingSession.id),
+      });
       return;
     }
 
     if (existingSession) {
       setSessionCookie(response, existingSession.id);
       const room = getRoomForSession(existingSession);
-      sendJson(response, 200, { name: existingSession.name, room, game: room?.gameId ? getGame(existingSession.id, room.gameId) : null });
+      sendJson(response, 200, {
+        name: existingSession.name, room,
+        game: room?.gameId ? getGame(existingSession.id, room.gameId) : getGameForSession(existingSession.id),
+      });
       return;
     }
 
@@ -160,7 +229,25 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  const gameAction = pathname.match(/^\/api\/games\/([^/]+)(?:\/(legal-moves|moves|resign))?$/u);
+  if (pathname === '/api/games/bot' && request.method === 'POST') {
+    const sessionId = sessionIdFrom(request);
+    const session = sessionId && getSession(sessionId);
+    if (!session) {
+      sendJson(response, 401, { error: { code: 'SESSION_REQUIRED', message: 'Tu sesión terminó. Vuelve a entrar.' } });
+      return;
+    }
+    if (getRoomForSession(session)) {
+      sendJson(response, 409, { error: { code: 'SESSION_IN_ROOM', message: 'Sal de la sala actual antes de iniciar otra partida.' } });
+      return;
+    }
+    const existing = getGameForSession(session.id);
+    const game = createBotGame(session.id, session.name);
+    setSessionCookie(response, session.id);
+    sendJson(response, existing?.status === 'playing' ? 200 : 201, { game });
+    return;
+  }
+
+  const gameAction = pathname.match(/^\/api\/games\/([^/]+)(?:\/(legal-moves|moves|resign|bot\/retry|leave))?$/u);
   if (gameAction) {
     const sessionId = sessionIdFrom(request);
     const session = sessionId && getSession(sessionId);
@@ -185,14 +272,28 @@ const server = createServer(async (request, response) => {
         const game = makeMove(session.id, gameId, input);
         sendJson(response, 200, { game });
         lobby.broadcastGame(game);
+        if (game.botThinking) queueBotTurn(gameId);
         if (game.status === 'finished') void archiveGame(gameId);
+        return;
+      }
+      if (request.method === 'POST' && action === 'bot/retry') {
+        const game = retryBotTurn(session.id, gameId);
+        sendJson(response, 202, { game });
+        lobby.broadcastGame(game);
+        queueBotTurn(gameId);
         return;
       }
       if (request.method === 'POST' && action === 'resign') {
         const game = resignGame(session.id, gameId);
+        cancelBotTurn(gameId);
         sendJson(response, 200, { game });
         lobby.broadcastGame(game);
         void archiveGame(gameId);
+        return;
+      }
+      if (request.method === 'POST' && action === 'leave') {
+        leaveBotGame(session.id, gameId);
+        sendJson(response, 200, { room: null });
         return;
       }
       sendJson(response, 405, { error: { code: 'METHOD_NOT_ALLOWED', message: 'No se puede realizar esa operación.' } });
@@ -290,7 +391,15 @@ const server = createServer(async (request, response) => {
 
   sendJson(response, 404, { error: 'No se encontró esa dirección.' });
 });
-const lobby = attachLobby(server);
+const lobby = attachLobby(server, {
+  onGameFinished: archiveGame,
+  onGameDisconnected(game) { if (game.mode === 'bot') cancelBotTurn(game.id); },
+  onBotTurn(game) { if (game.mode === 'bot' && game.botThinking) queueBotTurn(game.id); },
+});
+
+server.once('close', () => {
+  for (const gameId of botJobs.keys()) cancelBotTurn(gameId);
+});
 
 export { server };
 

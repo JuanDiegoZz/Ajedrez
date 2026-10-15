@@ -1,4 +1,4 @@
-# Árbol vigente — Fase 5
+# Árbol vigente — Fase 6
 
 Estructura de producto verificada el 2026-10-15. Se omiten `node_modules`, `dist` y datos locales generados.
 
@@ -19,6 +19,7 @@ ajedrez/
 │   │   ├── sessions.js
 │   │   ├── rooms.js
 │   │   ├── lobby.js
+│   │   ├── recovery.js
 │   │   ├── games.js
 │   │   └── game-archive.js
 │   └── test/
@@ -28,6 +29,8 @@ ajedrez/
 │       ├── games.test.js
 │       ├── games-api.test.js
 │       ├── games-ws.test.js
+│       ├── recovery.test.js
+│       ├── recovery-ws.test.js
 │       └── game-archive.test.js
 ├── frontend/
 │   ├── Dockerfile
@@ -51,4 +54,4 @@ ajedrez/
 └── .codex/
 ```
 
-Fase 5 añade el tablero React y snapshots de partida por el WebSocket existente. `chess.js` sigue siendo autoritativo en backend; bot y recuperación avanzada quedan fuera de alcance. Las carpetas de datos locales y cachés de herramientas no forman parte del árbol de producto.
+Fase 6 añade presencia y recuperación temporal al WebSocket existente, con timers backend y pruebas de timeout. `chess.js` sigue siendo autoritativo; bot queda fuera de alcance. Las carpetas de datos locales y cachés de herramientas no forman parte del árbol de producto.

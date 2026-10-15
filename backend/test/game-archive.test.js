@@ -38,6 +38,15 @@ test('archives game and ordered move history in one transaction', async () => {
   assert.deepEqual(pool.calls[2].values.slice(0, 5), [record.id, 1, 'f2', 'f3', null]);
 });
 
+test('stores bot identity and mode in the same game archive', async () => {
+  const pool = fakePool();
+  const botRecord = { ...record, mode: 'bot', blackName: 'Bot' };
+  await archiveFinishedGame(pool, botRecord);
+  assert.equal(pool.calls[1].values[1], 'bot');
+  assert.equal(pool.calls[1].values[3], 'Bot');
+  assert.equal(pool.calls[2].values[5], 'f3');
+});
+
 test('rolls back the complete archive when a move insert fails', async () => {
   const pool = fakePool(true);
   await assert.rejects(archiveFinishedGame(pool, record), /disk unavailable/u);

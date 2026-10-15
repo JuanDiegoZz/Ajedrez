@@ -1,8 +1,33 @@
 ﻿# 14 — Progreso, auditoría y evidencia
 
-## Estado actual — Fase 5 — 2026-10-15
+## Estado actual — Fase 6 — 2026-10-15
 
-**Fase 5: COMPLETADA — 2026-10-15.** Tablero integrado y flujo humano A/B verificados según `12_ROADMAP.md`. No se avanzó a Fase 6.
+**Fase 6: COMPLETADA — 2026-10-15.** Recuperación temporal de salas y partidas, reconexión WebSocket y archivo de timeout verificados. No se avanzó a Fase 7.
+
+- [x] Gracia backend única de 60 s desde detección del socket; ping/pong cada 10 s. Estado de recovery y timers aislados del dominio `chess.js`.
+- [x] Partida pausa al desconectar a cualquiera. Snapshots incluyen presencia/deadline; API rechaza movimientos/destinos legales con `GAME_PAUSED`.
+- [x] Misma cookie recupera sala y snapshot oficial. Refresh mantiene identidad, color, FEN, turno y último movimiento. La pestaña nueva sustituye socket anterior con aviso y cierre 4001.
+- [x] Anfitrión de sala esperando queda oculto del lobby durante gracia; reconexión restaura la misma sala y timeout la elimina. Sesión distinta no puede reclamar asiento.
+- [x] Al vencer partida: rival gana con motivo `disconnect`; ambos ausentes producen `interrupted` sin ganador. Se archiva por transacción existente; regreso tardío muestra estado final, no revive partida.
+- [x] `backend npm test`: 46/46 correctos. Incluye heartbeat, pausa/reanudación, sockets reemplazados, timeout, archivo, reingreso rechazado y eliminación de sala esperando. Tests inyectan grace reducido; PostgreSQL real archivó timeout como resultado `1-0`, motivo `disconnect`.
+- [x] `frontend npm run build`, `docker compose config --quiet`, `docker compose up -d --build web`, `docker compose ps`: correctos; web `0.0.0.0:8080`, backend/DB sin port bindings de host, DB healthy.
+- [x] `/api/health`: HTTP 200 con backend y PostgreSQL disponibles; Nginx conserva mismo origen `/api` y `/ws`.
+- [x] Playwright A/B: pérdida WebSocket corta y reintento; rival ve banner de desconexión; intento de jugada devuelve `409 GAME_PAUSED`; reconexión elimina banner y ambos ven el mismo snapshot. Sin `pageerror`.
+- [x] Playwright: anfitrión esperando se desconecta, sala desaparece del lobby y vuelve tras reconectar. Invitado entra; tras e2-e4/e7-e5, refresh conserva negras, peón en e5 y misma posición A/B.
+- [x] Playwright: sala esperando permanece oculta y expira tras 60 s; observador sigue sin verla y anfitrión vuelve al lobby. UI muestra aviso de expiración recibido después del snapshot vacío.
+- [x] Playwright timeout de 60 s: rival vio victoria por desconexión; archivo indicó guardado; jugador tardío recibió partida finalizada sin reactivarla; movimientos permanecieron bloqueados. Sin `pageerror`.
+- [x] Playwright con cookie inválida simulando reinicio mostró “El servidor se reinició o tu sesión terminó; la partida no puede recuperarse. Vuelve a entrar.” y pantalla de entrada. HTTP 410 esperado aparece en consola; sin error JavaScript.
+- [x] No se añadieron dependencias, tablas, almacenamiento durable, bot ni funciones de Fase 7. README, protocolo, ADR-013/015, árbol y progreso actualizados.
+
+### Límites de Fase 6
+
+- Playwright verificó caída corta, recuperación, sala esperando, refresh y timeout real de 60 s. Pruebas backend también inyectaron grace reducido; integración archivó un timeout en PostgreSQL real.
+- No se hizo un corte físico de Wi-Fi/LAN. Playwright cerró el WebSocket del navegador y emuló offline; el heartbeat cubre cierres silenciosos.
+- Reiniciar backend pierde sesiones, salas, partidas activas y timers. No se implementa recuperación durable.
+
+## Histórico — Fase 5 — 2026-10-15
+
+**Fase 5: COMPLETADA — 2026-10-15.** Tablero integrado y flujo humano A/B verificados según `12_ROADMAP.md`.
 
 - [x] React renderiza tablero 8×8 desde FEN del servidor. `game.you`, derivado de la sesión autenticada, fija orientación y color; blanco abajo para blancas, negro abajo para negras.
 - [x] Casillas con labels accesibles y navegación de foco por flechas; selección por click/tap/Enter, destinos legales por API, anillos de captura, último movimiento, turno, jaque y resultado textual.

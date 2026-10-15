@@ -29,7 +29,9 @@ function resultText(game) {
   const reason = {
     checkmate: 'jaque mate', stalemate: 'ahogado', insufficient_material: 'material insuficiente',
     repetition: 'repetición', fifty_moves: 'regla de cincuenta movimientos', resignation: 'abandono',
+    disconnect: 'desconexión', interrupted: 'interrupción por pérdida de conexión',
   }[result.reason] ?? 'tablas';
+  if (result.reason === 'interrupted') return 'Partida interrumpida por pérdida de conexión. No hubo ganador.';
   if (!result.winner) return `Partida en tablas por ${reason}.`;
   const color = result.winner === 'white' ? 'white' : 'black';
   const winner = color === 'white' ? game.white.name : game.black.name;
@@ -46,7 +48,7 @@ function MoveHistory({ history }) {
   </ol>;
 }
 
-export default function GameScreen({ game, room, session, connection, onGameChange, onReturnToLobby }) {
+export default function GameScreen({ game, room, session, connection, onGameChange, onReturnToLobby, onNewBotGame }) {
   const [selected, setSelected] = useState(null);
   const [legalMoves, setLegalMoves] = useState([]);
   const [legalLoading, setLegalLoading] = useState(false);
@@ -64,7 +66,8 @@ export default function GameScreen({ game, room, session, connection, onGameChan
   const focusAfterArrow = useRef(false);
   const myColor = game.you;
   const myTurn = game.turn === myColor;
-  const connected = connection === 'connected';
+  const connected = connection === 'connected' || connection === 'restored';
+  const canMove = connected && !game.paused;
   const board = piecesFromFen(game.fen);
   const ranks = myColor === 'white' ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
   const files = myColor === 'white' ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
@@ -104,8 +107,9 @@ export default function GameScreen({ game, room, session, connection, onGameChan
   }, [game.revision]);
 
   async function selectPiece(square) {
-    if (!myTurn || busy || !connected || game.status !== 'playing') {
+    if (!myTurn || busy || !canMove || game.status !== 'playing') {
       if (!myTurn && game.status === 'playing') setMessage('Espera tu turno para mover.');
+      else if (game.paused) setMessage('La partida está en pausa mientras se recupera la conexión.');
       return;
     }
     if (selected === square) {
@@ -154,6 +158,7 @@ export default function GameScreen({ game, room, session, connection, onGameChan
           STALE_REVISION: 'La partida cambió. Se actualizó el tablero; intenta de nuevo.',
           NOT_YOUR_TURN: 'El turno cambió. Revisa el estado actualizado.',
           GAME_NOT_ACTIVE: 'La partida ya terminó.',
+          GAME_PAUSED: 'La partida está en pausa mientras se recupera la conexión.',
           ILLEGAL_MOVE: 'Ese movimiento ya no está permitido. Elige otro destino.',
           PROMOTION_REQUIRED: 'Elige una pieza para completar la promoción.',
         };
@@ -176,8 +181,9 @@ export default function GameScreen({ game, room, session, connection, onGameChan
   }
 
   async function activateSquare(square) {
-    if (!myTurn || busy || !connected || game.status !== 'playing') {
+    if (!myTurn || busy || !canMove || game.status !== 'playing') {
       if (!myTurn && game.status === 'playing') setMessage('Espera tu turno para mover.');
+      else if (game.paused) setMessage('La partida está en pausa mientras se recupera la conexión.');
       return;
     }
     if (selected) {
@@ -210,6 +216,23 @@ export default function GameScreen({ game, room, session, connection, onGameChan
     }
   }
 
+  async function retryBot() {
+    if (busy) return;
+    setBusy(true);
+    setMessage('Pidiendo al bot que vuelva a intentar…');
+    try {
+      const response = await fetch(`/api/games/${encodeURIComponent(game.id)}/bot/retry`, { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || 'No se pudo reintentar.');
+      onGameChange(result.game);
+      setMessage('El bot está pensando…');
+    } catch (error) {
+      setMessage(error.message === 'Failed to fetch' ? 'No se pudo conectar. Inténtalo de nuevo.' : error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function returnToLobby() {
     if (returning) return;
     setReturning(true);
@@ -224,6 +247,13 @@ export default function GameScreen({ game, room, session, connection, onGameChan
   const otherColor = myColor === 'white' ? 'black' : 'white';
   const topPlayer = otherColor === 'white' ? game.white : game.black;
   const bottomPlayer = myColor === 'white' ? game.white : game.black;
+  const rivalDisconnected = game.mode !== 'bot' && game.presence?.[otherColor]?.status === 'disconnected';
+  const connectionText = {
+    connected: 'Conectado', restored: 'Conexión restablecida.', connecting: 'Conectando…',
+    disconnected: 'Conexión perdida. Intentando reconectar…',
+    expired: 'Tiempo de recuperación agotado. Recarga para comprobar el resultado.',
+    replaced: 'Esta sesión se abrió en otra pestaña. Esta pestaña ya no controla la partida.',
+  }[connection] ?? 'Conectando…';
   const turnLabel = game.status !== 'playing' ? resultText(game)
     : game.check ? `Jaque a ${game.turn === 'white' ? 'las blancas' : 'las negras'}`
       : myTurn ? 'Tu turno' : `Turno de ${game.turn === 'white' ? 'las blancas' : 'las negras'}`;
@@ -239,21 +269,36 @@ export default function GameScreen({ game, room, session, connection, onGameChan
 
   return <section className="game-screen" aria-labelledby="game-title">
     <header className="game-heading">
-      <div><p className="eyebrow">Partida · {room.name}</p><h2 id="game-title">Ajedrez</h2></div>
-      <p className={`connection-status ${connected ? 'connected' : 'disconnected'}`} role="status">{connected ? 'Conectado' : 'Reconectando al lobby…'}</p>
+      <div><p className="eyebrow">{game.mode === 'bot' ? 'Partida · Contra bot' : `Partida · ${room.name}`}</p><h2 id="game-title">Ajedrez</h2></div>
+      <p className={`connection-status ${connected ? 'connected' : 'disconnected'}`} role="status">{connectionText}</p>
     </header>
+    {game.status === 'playing' && rivalDisconnected && <p className="presence-banner" role="status">
+      {topPlayer.name} perdió la conexión. Esperando reconexión…
+    </p>}
     <p className={`turn-indicator${game.check && game.status === 'playing' ? ' in-check' : ''}`} role="status" aria-live="polite">{game.check && game.status === 'playing' ? '⚠ ' : ''}{turnLabel}</p>
+    {game.mode === 'bot' && game.status === 'playing' && game.botThinking && <p className="presence-banner" role="status" aria-live="polite">El bot está pensando…</p>}
+    {game.mode === 'bot' && game.status === 'playing' && game.botError && <div className="presence-banner" role="alert">
+      <p>El bot no pudo elegir una jugada.</p>
+      <button className="secondary-button" type="button" disabled={busy} onClick={() => void retryBot()}>{busy ? 'Reintentando…' : 'Reintentar'}</button>
+    </div>}
     {game.status === 'finished' && <section className="game-result" aria-labelledby="result-title">
       <h3 id="result-title">Partida terminada</h3><p>{resultText(game)}</p>
         {game.archiveStatus === 'pending' && <p>El resultado está pendiente de guardado; el servidor volverá a intentarlo.</p>}
       {game.archiveStatus === 'saved' && <p>Resultado guardado.</p>}
-      <button className="primary-button" type="button" disabled={returning} onClick={returnToLobby}>{returning ? 'Volviendo…' : 'Volver al lobby'}</button>
+      {game.mode === 'bot' && <button className="primary-button" type="button" disabled={returning} onClick={async () => {
+        setReturning(true);
+        try {
+          if (!await onNewBotGame()) setMessage('No se pudo iniciar otra partida. Inténtalo de nuevo.');
+        } catch (error) { setMessage(error.message); }
+        finally { setReturning(false); }
+      }}>{returning ? 'Iniciando…' : 'Otra contra bot'}</button>}
+      <button className="secondary-button" type="button" disabled={returning} onClick={returnToLobby}>{returning ? 'Volviendo…' : 'Volver al lobby'}</button>
     </section>}
     {game.check && checkedKing && <p className="check-message" role="status">⚠ El rey de {game.turn === 'white' ? 'las blancas' : 'las negras'} está en jaque, en {checkedKing}.</p>}
     <p className="game-message" role={message && /cambió|no se pudo|no está permitido|perdió|error/iu.test(message) ? 'alert' : 'status'} aria-live="polite">{message}</p>
     <div className="game-layout">
       <div className="board-column">
-        <PlayerCard player={topPlayer} color={otherColor} label={otherColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === otherColor} />
+        <PlayerCard player={topPlayer} color={otherColor} label={game.mode === 'bot' ? 'Bot · Negras' : otherColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === otherColor} />
         <p className="sr-only" id="board-help">Usa las flechas para explorar casillas. Pulsa Enter o espacio para seleccionar. Escape cancela la selección.</p>
         <div className="chess-board" role="group" aria-label={`Tablero de ajedrez, orientado para ${myColor === 'white' ? 'blancas' : 'negras'}`} aria-describedby="board-help" ref={boardRef}>
           {squares.map((square, index) => {
@@ -277,7 +322,7 @@ export default function GameScreen({ game, room, session, connection, onGameChan
               + `${game.check && square === checkedKing ? ', rey en jaque' : ''}`;
             return <button key={square} type="button" data-square={square}
               className={`board-square ${isDark ? 'dark' : 'light'}${selected === square ? ' selected' : ''}${targetMoves.length ? targetMoves.some((move) => move.capture) ? ' capture-target' : ' legal-target' : ''}${isLastMove ? ' last-move' : ''}${checkedKing === square ? ' checked-king' : ''}`}
-              aria-label={label} aria-pressed={selected === square} aria-disabled={!myTurn || busy || game.status !== 'playing' || !connected}
+              aria-label={label} aria-pressed={selected === square} aria-disabled={!myTurn || busy || game.status !== 'playing' || !canMove}
               tabIndex={focusedSquare === square || (!focusedSquare && index === 0) ? 0 : -1}
               onFocus={() => setFocusedSquare(square)}
               onKeyDown={(event) => {
@@ -302,7 +347,7 @@ export default function GameScreen({ game, room, session, connection, onGameChan
             </button>;
           })}
         </div>
-        <PlayerCard player={bottomPlayer} color={myColor} label={myColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === myColor} isYou />
+        <PlayerCard player={bottomPlayer} color={myColor} label={game.mode === 'bot' ? 'Tú · Blancas' : myColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === myColor} isYou />
       </div>
       <aside className="game-side-panel" aria-label="Información de la partida">
         <div className="your-color"><strong>Juegas con {myColor === 'white' ? 'blancas' : 'negras'}</strong><span>· {session.name}</span></div>

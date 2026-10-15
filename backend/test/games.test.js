@@ -2,9 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createGame,
+  createBotGame,
+  expireDisconnectedPlayer,
+  getArchiveRecord,
   getGame,
+  getGameForSession,
   getLegalMoves,
+  markGameDisconnected,
   makeMove,
+  applyBotMove,
+  retryBotTurn,
+  setBotSearchError,
+  reconnectGamePlayer,
   resignGame,
 } from '../src/games.js';
 
@@ -28,6 +37,51 @@ test('creates a public initial game with host as white and guest as black', () =
   assert.deepEqual(game.white, { name: 'Alex' });
   assert.deepEqual(game.black, { name: 'Sam' });
   assert.equal(JSON.stringify(game).includes('session'), false);
+});
+
+test('creates a private bot game and applies only a revision-matched bot move', () => {
+  const game = createBotGame('human-session', 'Alex');
+  assert.equal(game.mode, 'bot');
+  assert.equal(game.turn, 'white');
+  assert.equal(game.you, 'white');
+  assert.deepEqual(game.white, { name: 'Alex' });
+  assert.deepEqual(game.black, { name: 'Bot' });
+  assert.equal(JSON.stringify(game).includes('human-session'), false);
+  assert.equal(getGameForSession('human-session').id, game.id);
+  assert.throws(() => getGame('intruder', game.id), { code: 'NOT_A_PLAYER' });
+
+  const afterHuman = makeMove('human-session', game.id, { from: 'e2', to: 'e4' });
+  assert.equal(afterHuman.botThinking, true);
+  assert.deepEqual(afterHuman.history, ['e4']);
+  assert.throws(() => makeMove('human-session', game.id, { from: 'e7', to: 'e5' }), { code: 'NOT_YOUR_TURN' });
+  assert.equal(setBotSearchError(game.id, afterHuman.revision).botError, true);
+  assert.equal(retryBotTurn('human-session', game.id).botThinking, true);
+  assert.equal(applyBotMove(game.id, afterHuman.revision - 1, { from: 'e7', to: 'e5' }), null);
+
+  const afterBot = applyBotMove(game.id, afterHuman.revision, { from: 'e7', to: 'e5' });
+  assert.equal(afterBot.turn, 'white');
+  assert.equal(afterBot.botThinking, false);
+  assert.deepEqual(afterBot.history, ['e4', 'e5']);
+  resignGame('human-session', game.id);
+  assert.equal(getArchiveRecord(game.id).mode, 'bot');
+  assert.equal(getArchiveRecord(game.id).blackName, 'Bot');
+  assert.equal(getArchiveRecord(game.id).moves.length, 2);
+});
+
+test('bot calculation is invalidated during human recovery, then can be retried', () => {
+  const game = createBotGame('recovering-human', 'Alex');
+  const waiting = makeMove('recovering-human', game.id, { from: 'e2', to: 'e4' });
+  const disconnected = markGameDisconnected('recovering-human', game.id, Date.now() + 60_000);
+  assert.equal(disconnected.paused, true);
+  assert.equal(disconnected.botThinking, false);
+  assert.equal(applyBotMove(game.id, waiting.revision, { from: 'e7', to: 'e5' }), null);
+
+  const restored = reconnectGamePlayer('recovering-human', game.id);
+  assert.equal(restored.paused, false);
+  assert.equal(restored.botThinking, true);
+  assert.ok(restored.revision > waiting.revision);
+  assert.equal(applyBotMove(game.id, waiting.revision, { from: 'e7', to: 'e5' }), null);
+  assert.deepEqual(getGameForSession('recovering-human').history, ['e4']);
 });
 
 test('returns legal moves by square only to the player whose turn it is', () => {
@@ -153,4 +207,45 @@ test('resignation ends the game for the opponent once', () => {
   const result = resignGame('guest-session', game.id);
   assert.deepEqual(result.result, { winner: 'white', reason: 'resignation' });
   assert.throws(() => resignGame('guest-session', game.id), { code: 'GAME_NOT_ACTIVE' });
+});
+
+test('pauses a game on disconnect and resumes the same snapshot on reconnect', () => {
+  const game = fixture();
+  const deadline = Date.now() + 60_000;
+
+  const disconnected = markGameDisconnected('guest-session', game.id, deadline);
+  assert.equal(disconnected.presence.black.status, 'disconnected');
+  assert.equal(disconnected.paused, true);
+  assert.throws(() => getLegalMoves('host-session', game.id, 'e2'), { code: 'GAME_PAUSED' });
+  assert.throws(() => play(game, 'host-session', 'e2', 'e4'), { code: 'GAME_PAUSED' });
+
+  const resumed = reconnectGamePlayer('guest-session', game.id);
+  assert.equal(resumed.presence.black.status, 'connected');
+  assert.equal(resumed.paused, false);
+  assert.equal(resumed.fen, game.fen);
+  assert.equal(play(game, 'host-session', 'e2', 'e4').turn, 'black');
+});
+
+test('disconnect timeout awards connected opponent and rejects later moves', () => {
+  const game = fixture();
+  const deadline = Date.now() + 60_000;
+  markGameDisconnected('guest-session', game.id, deadline);
+
+  const finished = expireDisconnectedPlayer('guest-session', game.id, deadline);
+  assert.deepEqual(finished.result, { winner: 'white', reason: 'disconnect' });
+  assert.equal(finished.revision, 1);
+  assert.equal(reconnectGamePlayer('guest-session', game.id), null);
+  assert.throws(() => play(game, 'host-session', 'e2', 'e4'), { code: 'GAME_NOT_ACTIVE' });
+});
+
+test('first timeout interrupts a game if both players are disconnected', () => {
+  const game = fixture();
+  const firstDeadline = Date.now() + 60_000;
+  markGameDisconnected('host-session', game.id, firstDeadline);
+  markGameDisconnected('guest-session', game.id, firstDeadline + 1);
+
+  const finished = expireDisconnectedPlayer('host-session', game.id, firstDeadline);
+  assert.deepEqual(finished.result, { winner: null, reason: 'interrupted' });
+  assert.equal(getArchiveRecord(game.id).result, '*');
+  assert.equal(getArchiveRecord(game.id).endReason, 'interrupted');
 });
