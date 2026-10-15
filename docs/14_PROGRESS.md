@@ -1,6 +1,21 @@
 ﻿# 14 — Progreso, auditoría y evidencia
 
-## Estado actual — Fase 7 — 2026-10-15
+## Estado actual — Fase 8 — 2026-10-15
+
+**Fase 8: NO COMPLETADA.** Auditoría técnica/heurística y candidata B verificadas; el estudio con estudiantes y su comparación A/B siguen pendientes. No se atribuyen resultados a usuarios.
+
+- Versión A congelada por referencia al checkpoint limpio `cb61d64` (Fase 7). Playwright inspeccionó entrada, lobby, diálogo, espera, partida humana A/B, bot, abandono, reconexión y teclado antes de cambiar código.
+- Prioridad: P1 marcadores de movimiento/captura (2.21:1/2.68:1 sobre casilla oscura) y foco del diálogo “Crear sala” (caía en `body`); P2 coordenadas visuales (3.29:1). No se observó P0.
+- Candidata B eleva contraste y restaura foco al botón que abrió el diálogo. Medición tras el cambio: marcador/anillo 3.24:1 sobre casilla oscura y 4.91:1 sobre clara; coordenada/selección/foco 5.67:1 y 13:1; contorno de jaque 3.18:1 y 7.30:1. Hallazgos y cambios no implican éxito de usabilidad humana.
+- Responsive observado en 1440, 1024, 768, 390 y 320 px. Tablero: 640, 640, 489, 343 y 273 px; casilla mínima observada: 34 px; no hubo desbordamiento horizontal.
+- Playwright verificó foco de modal/restauración, selección/flechas/Enter, destinos y marcador de captura, e2–e4, e7–e5 y exd5 sincronizados A/B, modo bot con “El bot está pensando…”, refresh/abandono, y desconexión/reconexión por cierre WebSocket. Banner rival pasó a 390 px; mensaje propio a 320 px, sin overflow. Contextos limpios: cero errores de consola o JavaScript.
+- Revalidación: `backend npm test` 57/57; `frontend npm run build`; `docker compose config --quiet`; `docker compose up -d --build`; web en `0.0.0.0:8080`, PostgreSQL healthy, `/api/health` 200 y `pg_isready` acepta conexiones.
+- Viewports: entrada, lobby, modal, espera, tablero y resultado no desbordan en 1440/1024/768/390/320 px. En 320 px, botones 45 px y casilla de 34 px. Con `prefers-reduced-motion: reduce`, la pieza no anima (`animation-name: none`).
+- El log agregado de Playwright conserva ocho errores HTTP/WebSocket de contextos anteriores cuando Compose reinició; las rutas felices post-reinicio en contextos nuevos no registraron errores. No hubo warnings.
+- Preparación de estudiantes en `11`: se añadió T9 de interpretación de desconexión. No se han reclutado ni probado estudiantes; eficacia, eficiencia, satisfacción y comparación de versiones carecen de resultados reales. Tampoco se hizo revisión manual con lector de pantalla.
+- Pendiente para cerrar Fase 8 según roadmap: probar versión B con unos cinco estudiantes, registrar datos anónimos y comparar tareas equivalentes con A; documentar hallazgos y límites sin generalizar la muestra.
+
+## Estado histórico — Fase 7 — 2026-10-15
 
 **Fase 7: COMPLETADA — 2026-10-15.** El modo privado contra bot reutiliza el dominio autoritativo y archivo existente. No se avanzó a Fase 8.
 

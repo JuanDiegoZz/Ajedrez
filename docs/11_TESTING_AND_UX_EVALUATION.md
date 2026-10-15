@@ -55,8 +55,9 @@ Tiempo desde terminar de leer instrucción hasta estado objetivo; “sin ayuda�
 | T6 Captura/última jugada | “¿Qué movió el rival? Realiza esta captura cuando sea tu turno” | Identifica origen/destino y captura indicada legalmente | ≥4/5; mediana ≤30 s |
 | T7 Bot | “Comienza una partida contra el sistema y juega una vez” | Mueve humano y reconoce respuesta/turno del bot | ≥4/5; mediana ≤45 s |
 | T8 Salida | “Deja esta partida y vuelve a donde puedas elegir otra” | Confirma abandono, entiende resultado y vuelve al lobby | ≥4/5; mediana ≤30 s |
+| T9 Desconexión | “¿Qué está pasando y qué harías ahora?” (mostrar rival desconectado) | Identifica la pérdida de conexión y entiende que la app espera su regreso | ≥4/5 sin ayuda; respuesta ≤10 s como meta |
 
-Verificar promoción, jaque y desconexión como observaciones complementarias con estados preparados. No obligar a producir mate desde partida completa para medir comprensión del resultado. Metas son hipótesis de aceptación, no valores extraídos de estudios.
+Verificar promoción y jaque como observaciones complementarias con estados preparados. No obligar a producir mate desde partida completa para medir comprensión del resultado. Metas son hipótesis de aceptación, no valores extraídos de estudios.
 
 ### Registro por tarea
 

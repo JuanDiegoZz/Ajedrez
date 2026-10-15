@@ -41,6 +41,7 @@ function App() {
   const [createOpen, setCreateOpen] = useState(false);
   const [roomName, setRoomName] = useState('');
   const dialogRef = useRef(null);
+  const createOpenerRef = useRef(null);
   const currentRoomRef = useRef(null);
   const currentGameRef = useRef(null);
   const socketRef = useRef(null);
@@ -251,7 +252,11 @@ function App() {
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (!dialog) return;
+    if (!dialog) {
+      if (!createOpen && createOpenerRef.current?.isConnected) createOpenerRef.current.focus();
+      if (!createOpen) createOpenerRef.current = null;
+      return;
+    }
     if (createOpen && !dialog.open) dialog.showModal();
     if (!createOpen && dialog.open) dialog.close();
   }, [createOpen]);
@@ -396,7 +401,8 @@ function App() {
             <p className="description">Crea una sala o únete a alguien que esté esperando.</p>
             {roomMessage && <p className="success-message" role="status">{roomMessage}</p>}
             <div className="actions">
-              <button className="primary-button" type="button" disabled={Boolean(roomAction)} onClick={() => {
+              <button className="primary-button" type="button" disabled={Boolean(roomAction)} onClick={(event) => {
+                createOpenerRef.current = event.currentTarget;
                 setRoomName(`Sala de ${session.name}`);
                 setRoomError('');
                 setCreateOpen(true);
@@ -421,7 +427,8 @@ function App() {
             {roomsStatus === 'ready' && rooms.length === 0 && <div className="empty-state">
               <span className="empty-mark" aria-hidden="true">♟</span><h3>Aún no hay salas</h3>
               <p>Cuando alguien cree una sala, aparecerá aquí. También puedes crear una para empezar.</p>
-              <button className="secondary-button" type="button" disabled={Boolean(roomAction)} onClick={() => {
+              <button className="secondary-button" type="button" disabled={Boolean(roomAction)} onClick={(event) => {
+                createOpenerRef.current = event.currentTarget;
                 setRoomName(`Sala de ${session.name}`);
                 setRoomError('');
                 setCreateOpen(true);

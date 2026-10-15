@@ -100,16 +100,16 @@ button:focus-visible, input:focus-visible { outline: 3px solid #1d4ed8; outline-
 .board-square.light { color: #172033; background: #f0d9b5; }
 .board-square.dark { color: #172033; background: #b58863; }
 .board-square:hover:not(:disabled) { filter: none; }
-.board-square:focus-visible { z-index: 2; outline: 3px solid #1d4ed8; outline-offset: -3px; box-shadow: inset 0 0 0 2px #fff; }
-.board-square.selected { box-shadow: inset 0 0 0 4px #1d4ed8; }
+.board-square:focus-visible { z-index: 2; outline: 3px solid #0f172a; outline-offset: -3px; box-shadow: inset 0 0 0 2px #fff; }
+.board-square.selected { box-shadow: inset 0 0 0 4px #0f172a; }
 .board-square.last-move { background-image: linear-gradient(rgb(250 204 21 / 32%), rgb(250 204 21 / 32%)); }
-.board-square.checked-king { outline: 4px solid #b91c1c; outline-offset: -4px; }
-.square-coordinate { position: absolute; z-index: 1; top: 0.1rem; left: 0.2rem; color: #334155; font-size: clamp(0.55rem, 1.7vw, 0.75rem); font-weight: 750; line-height: 1; pointer-events: none; }
+.board-square.checked-king { outline: 4px solid #7f1d1d; outline-offset: -4px; }
+.square-coordinate { position: absolute; z-index: 1; top: 0.1rem; left: 0.2rem; color: #0f172a; font-size: clamp(0.55rem, 1.7vw, 0.75rem); font-weight: 750; line-height: 1; pointer-events: none; }
 .piece-symbol { display: grid; width: 100%; height: 100%; place-items: center; font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", serif; font-size: clamp(1.5rem, 7.3vw, 3.5rem); line-height: 1; pointer-events: none; }
 .piece-symbol.white { color: #fff; -webkit-text-stroke: 0.5px #1e293b; text-shadow: 0 1px 1px #0f172a, 1px 0 #334155, -1px 0 #334155; }
 .piece-symbol.black { color: #172033; -webkit-text-stroke: 0.35px #f8fafc; }
-.move-marker { position: absolute; width: 24%; height: 24%; border: 0; border-radius: 50%; background: rgb(15 23 42 / 45%); pointer-events: none; }
-.capture-target .move-marker { width: 84%; height: 84%; background: transparent; border: 5px solid rgb(15 23 42 / 55%); }
+.move-marker { position: absolute; width: 24%; height: 24%; border: 0; border-radius: 50%; background: rgb(15 23 42 / 65%); pointer-events: none; }
+.capture-target .move-marker { width: 84%; height: 84%; background: transparent; border: 5px solid rgb(15 23 42 / 65%); }
 .square-coordinate:last-child { pointer-events: none; }
 .game-side-panel { min-width: 0; padding: 1rem; background: #fff; border: 1px solid #dbe3ec; border-radius: 0.6rem; }
 .your-color { margin: 0 0 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #dbe3ec; }
