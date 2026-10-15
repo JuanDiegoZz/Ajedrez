@@ -1,6 +1,28 @@
 ﻿# 14 — Progreso, auditoría y evidencia
 
-## Estado actual — Fase 1 — 2026-10-15
+## Estado actual — Fase 2 — 2026-10-15
+
+**Fase 2: COMPLETADA — 2026-10-15**, según el alcance y la aceptación de `12_ROADMAP.md`.
+
+- [x] Entrada temporal con nombre visible de 2–24 caracteres; servidor recorta espacios y rechaza vacío, longitudes inválidas y caracteres de control.
+- [x] Identidad aleatoria de sesión separada del nombre; cookie `HttpOnly`, `SameSite=Lax`; sesión en memoria con expiración tras dos horas inactivas. Recargar conserva sesión mientras siga válida.
+- [x] Lobby con identidad, carga, lista vacía, error recuperable y acciones futuras deshabilitadas con explicación.
+- [x] Accesibilidad básica: label, botones semánticos, Enter, foco visible, headings, mensajes `status`/`alert`, estados disabled y diseño móvil.
+- [x] `npm test`: 2 pruebas correctas. Build frontend correcto.
+- [x] `docker compose config` y `docker compose up -d --build`: correctos; `docker compose ps` mostró web, backend y PostgreSQL activos, DB healthy.
+- [x] `/api/health` respondió `200` con backend y PostgreSQL disponibles; `SELECT 1` pasó en PostgreSQL.
+- [x] Web sigue publicado en `0.0.0.0:8080`; backend y PostgreSQL siguen sin puertos host.
+- [x] Playwright probó entrada vacía bloqueada, nombre recortado y Enter, lobby vacío, recarga con sesión, cookies/identidades separadas en dos contextos, error comprensible, foco, mismo origen y ancho móvil sin desbordamiento. Consola limpia en camino feliz; sin errores JavaScript. La respuesta 503 inducida para probar error produjo solo el aviso de recurso HTTP esperado en Chromium.
+- [x] No se implementó creación/unión de salas ni bot. El prompt los enumeraba entre criterios, pero el roadmap vigente asigna salas a Fase 3 y bot a Fase 7; esos límites se conservaron. Las acciones aparecen deshabilitadas y explicadas.
+- [x] README, árbol, decisión ADR-003 y este progreso actualizados. No se añadieron dependencias.
+
+### Evidencia y límites de Fase 2
+
+- API: sesión anónima sin cookie devuelve `200 null`; nombre vacío devuelve `400` con texto comprensible; dos contextos independientes recibieron cookies distintas; cada uno listó cero salas.
+- Navegador: Playwright cubrió escritorio y viewports móviles de 390 y 320 px; no hubo desbordamiento horizontal. Una respuesta 503 inducida confirmó mensaje recuperable sin exponer el cuerpo técnico del servidor.
+- No se probó creación/unión concurrente ni una partida contra bot: pertenecen a fases posteriores. La prueba externa desde un dispositivo LAN aprobó Fase 1; no se repitió en esta fase porque el proxy y puerto no cambiaron.
+
+## Estado histórico — Fase 1 — 2026-10-15
 
 **Fase 1: COMPLETADA — 2026-10-15.** Compose, servicios, proxy, navegador, puerto 8080 y prueba LAN desde un celular quedaron verificados.
 

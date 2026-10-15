@@ -26,13 +26,20 @@ Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. 
 - Descartado: motor propio de reglas.
 - Consecuencia: la dependencia concreta se propone en ADR-004.
 
+### ADR-003 — Sesión temporal de entrada
+
+- Estado: aceptada por autorización de implementación de Fase 2, 2026-10-15.
+- Contexto: el usuario necesita un nombre visible sin crear una cuenta.
+- Decisión: guardar sesiones en memoria con ID aleatorio opaco. `ajedrez_session` guarda solo ese ID en cookie `HttpOnly`, `SameSite=Lax`, `Path=/`, con `Max-Age=7200`; el nombre no es identificador ni credencial. No usa `Secure` porque el acceso aprobado es HTTP LAN.
+- Razón: conservar la sesión tras recargar sin guardar secretos o agregar autenticación.
+- Consecuencia: sesiones vencen tras dos horas sin actividad o al reiniciar backend. El navegador no guarda el nombre en `localStorage`; salas y controles de conexión quedan para sus fases.
+
 ## Propuestas para revisión humana
 
-Todas las siguientes tienen estado **propuesta**, fecha **2026-10-15**. No existen aceptaciones humanas nuevas todavía.
+Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó con alcance limitado para Fase 2.
 
 | ID | Decisión propuesta | Razón y alternativa descartada | Consecuencia / detalle |
 |---|---|---|---|
-| ADR-003 | Sesión temporal con nombre, cookie opaca y sin cuentas | Identidad suficiente para LAN; descartar contraseña/OAuth y nombre como credencial | Una conexión controladora; reinicio pierde sesión. `07` |
 | ADR-004 | chess.js como reglas en servidor | Genera movimientos, valida, mantiene FEN/historial y detecta finales; no incluye IA. Descartar reglas propias | Versionar al implementar y probar integración. Destinos viajan al cliente. `04`, `07` |
 | ADR-005 | WebSocket nativo de navegador y ws en backend | Contrato pequeño, HTTP compartido; descartar Socket.IO para no añadir otra capa de protocolo | Implementar heartbeat, resuscripción y reintentos explícitos. `09` |
 | ADR-006 | Servidor autoritativo con snapshot completo, revisión y requestId | Evitar divergencia, doble envío y legalidad en cliente; descartar estado optimista como autoridad | Una mutación síncrona; historial completo para repetición. `08`, `09` |
@@ -49,7 +56,7 @@ Todas las siguientes tienen estado **propuesta**, fecha **2026-10-15**. No exist
 
 | Pendiente | Quién / cuándo | Cómo resolver sin ampliar alcance |
 |---|---|---|
-| Aprobar MVP y ADR-003–014 | Responsable del proyecto, antes de fase 1 | Revisar propuestas y políticas de tablas/desconexión/pérdida de activos |
+| Aprobar MVP y ADR-004–014 | Responsable del proyecto, antes de sus fases | Revisar propuestas y políticas de tablas/desconexión/pérdida de activos |
 | Autorizar implementación | Responsable del proyecto, después de revisión | Registrar autorización explícita en `14` |
 | Framework HTTP, cliente PostgreSQL y herramientas build/pruebas | Implementador, fase 1 | Context7, compatibilidad, costo mínimo; candidatos Express y SQL directo, sin ORM por defecto |
 | Versiones y licencia de dependencias/piezas | Implementador, fases 1 y 5 | Verificar fuentes actuales, fijar lockfile y atribuciones; sin assets remotos obligatorios |

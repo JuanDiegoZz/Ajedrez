@@ -1,4 +1,4 @@
-# Árbol vigente — Fase 1
+# Árbol vigente — Fase 2
 
 Estructura de producto verificada el 2026-10-15. Se omiten `node_modules`, `dist` y datos locales generados.
 
@@ -14,8 +14,11 @@ ajedrez/
 │   ├── Dockerfile
 │   ├── package.json
 │   ├── package-lock.json
-│   └── src/
-│       └── server.js
+│   ├── src/
+│   │   ├── server.js
+│   │   └── sessions.js
+│   └── test/
+│       └── sessions.test.js
 ├── frontend/
 │   ├── Dockerfile
 │   ├── nginx.conf
@@ -29,10 +32,11 @@ ajedrez/
 ├── docs/
 │   ├── 00_VISION.md … 14_PROGRESS.md
 │   └── superpowers/plans/
-│       └── 2026-10-15-fase-1-arranque-lan.md
+│       ├── 2026-10-15-fase-1-arranque-lan.md
+│       └── 2026-10-15-fase-2-entrada-lobby.md
 ├── prompts/
 ├── setup/
 └── .codex/
 ```
 
-Fase 1 contiene la página de salud, la API, el proxy y el arranque LAN. No incluye todavía salas, tablero, reglas, WebSocket de juego, bot ni historial. Las carpetas de datos locales y cachés de herramientas no forman parte del árbol de producto.
+Fase 2 añade entrada, sesión temporal, endpoint de lobby vacío y estados responsive. Crear/unirse a salas, WebSocket, tablero, reglas, bot e historial siguen fuera de esta fase. Las carpetas de datos locales y cachés de herramientas no forman parte del árbol de producto.

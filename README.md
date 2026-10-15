@@ -1,6 +1,6 @@
 # Ajedrez UX
 
-Aplicación universitaria de ajedrez para 2–5 personas en red local. La Fase 1 entrega una página de diagnóstico servida por Nginx, un backend Node.js y una comprobación real de PostgreSQL. Las funciones de juego pertenecen a fases posteriores.
+Aplicación universitaria de ajedrez para 2–5 personas en red local. La Fase 2 entrega entrada con nombre temporal y un lobby inicial, servido por Nginx con backend Node.js y PostgreSQL.
 
 ## Arranque
 
@@ -14,7 +14,9 @@ docker compose ps
 docker compose logs --tail=80
 ```
 
-Abre `http://localhost:8080`. La página muestra si frontend, backend y PostgreSQL responden. El endpoint `GET /api/health` consulta `SELECT 1` en PostgreSQL. Solo Nginx publica un puerto; backend y base de datos quedan en la red interna de Compose.
+Abre `http://localhost:8080`. La app conserva una sesión temporal al recargar y muestra el estado de frontend, backend y PostgreSQL. El endpoint `GET /api/health` consulta `SELECT 1` en PostgreSQL. Solo Nginx publica un puerto; backend y base de datos quedan en la red interna de Compose.
+
+El nombre se mantiene en memoria en el backend. El navegador guarda solo `ajedrez_session`: un ID opaco en cookie `HttpOnly`, `SameSite=Lax`, `Path=/`, con duración renovable de 7200 segundos. No se guarda el nombre en `localStorage`. La cookie no usa `Secure` porque el acceso LAN es HTTP. La sesión vence tras dos horas sin actividad o al reiniciar el backend. No hay cuentas ni contraseñas.
 
 Para detener servicios sin borrar los datos guardados:
 
@@ -45,7 +47,8 @@ La app debe estar levantada y el dispositivo debe poder alcanzar el equipo anfit
 
 ## Límites conocidos
 
-- Esta fase solo verifica conectividad; todavía no hay lobby ni partidas de ajedrez.
+- El lobby muestra el estado vacío. Crear/unirse a salas corresponde a Fase 3; jugar contra bot corresponde a Fase 7. Esas acciones aparecen deshabilitadas hasta su fase.
+- Las sesiones y salas activas son temporales y viven en memoria; reiniciar el backend las elimina.
 - El puerto predeterminado es 8080. Si otra aplicación lo ocupa, hay que liberarlo antes del arranque normal.
 - La prueba LAN desde un celular en la misma red pasó el 2026-10-15.
 - La conexión al puerto LAN se enlaza a todas las interfaces del anfitrión. Úsala solo en una red de confianza.
