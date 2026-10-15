@@ -1,0 +1,18 @@
+# Example project-local Codex configuration.
+# Copy/reconcile manually with your Codex config only after reviewing it.
+# Do not commit secrets.
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["@playwright/mcp@latest"]
+
+# Context7 is preferably installed as a Codex plugin with OAuth for this project.
+# See ../setup/CODEX_TOOLS.md
+
+
+# Serena: install it first with uv, run `serena init`, then `serena setup codex`.
+# This manual block reflects the current official Codex configuration.
+[mcp_servers.serena]
+startup_timeout_sec = 15
+command = "serena"
+args = ["start-mcp-server", "--project-from-cwd", "--context=codex"]
