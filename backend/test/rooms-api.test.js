@@ -21,7 +21,7 @@ async function enter(base, name) {
   return { response, cookie, json: await response.json() };
 }
 
-test('room API authenticates sessions, enforces capacity, and cleans up on leave/cancel', async (t) => {
+test('room API authenticates sessions, enforces capacity, blocks orphaning a game, and cancels waiting rooms', async (t) => {
   const base = await start(t);
   const missing = await fetch(`${base}/api/rooms`);
   assert.equal(missing.status, 401);
@@ -64,10 +64,18 @@ test('room API authenticates sessions, enforces capacity, and cleans up on leave
   assert.equal((await nonHostCancel.json()).error.code, 'NOT_ROOM_HOST');
   assert.equal((await (await fetch(`${base}/api/session`, { headers: { Cookie: a.cookie } })).json()).room.guestName, 'Guest API');
 
-  await fetch(`${base}/api/rooms/${room.id}/leave`, { method: 'POST', headers: { Cookie: b.cookie } });
-  assert.equal((await (await fetch(`${base}/api/session`, { headers: { Cookie: a.cookie } })).json()).room.status, 'waiting');
-  const cancelled = await fetch(`${base}/api/rooms/${room.id}`, { method: 'DELETE', headers: { Cookie: a.cookie } });
+  const leaveActive = await fetch(`${base}/api/rooms/${room.id}/leave`, { method: 'POST', headers: { Cookie: b.cookie } });
+  assert.equal(leaveActive.status, 409);
+  assert.equal((await leaveActive.json()).error.code, 'GAME_ACTIVE');
+  assert.equal((await (await fetch(`${base}/api/session`, { headers: { Cookie: a.cookie } })).json()).room.guestName, 'Guest API');
+
+  const extraRoomResponse = await fetch(`${base}/api/rooms`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: c.cookie },
+    body: JSON.stringify({ name: 'Sala para cancelar' }),
+  });
+  const extraRoom = (await extraRoomResponse.json()).room;
+  const cancelled = await fetch(`${base}/api/rooms/${extraRoom.id}`, { method: 'DELETE', headers: { Cookie: c.cookie } });
   assert.equal(cancelled.status, 200);
-  assert.deepEqual((await (await fetch(`${base}/api/rooms`, { headers: { Cookie: a.cookie } })).json()).rooms, []);
+  assert.equal((await (await fetch(`${base}/api/rooms`, { headers: { Cookie: c.cookie } })).json()).rooms.length, 0);
 });
 

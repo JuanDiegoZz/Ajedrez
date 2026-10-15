@@ -1,6 +1,6 @@
 # Ajedrez UX
 
-Aplicación universitaria de ajedrez para 2–5 personas en red local. La Fase 3 entrega entrada temporal, lobby en vivo y salas humanas para dos personas, servido por Nginx con backend Node.js y PostgreSQL.
+Aplicación universitaria de ajedrez para 2–5 personas en red local. Fase 4 añade el dominio autoritativo de partidas al frontend React, backend Node.js, PostgreSQL, Nginx y Compose.
 
 ## Arranque
 
@@ -18,7 +18,7 @@ Abre `http://localhost:8080`. La app conserva una sesión temporal al recargar y
 
 El nombre se mantiene en memoria en el backend. El navegador guarda solo `ajedrez_session`: un ID opaco en cookie `HttpOnly`, `SameSite=Lax`, `Path=/`, con duración renovable de 7200 segundos. No se guarda el nombre en `localStorage`. La cookie no usa `Secure` porque el acceso LAN es HTTP. La sesión vence tras dos horas sin actividad o al reiniciar el backend. No hay cuentas ni contraseñas.
 
-En el lobby, `Crear sala` abre un formulario breve. El anfitrión espera en la sala; al entrar la segunda sesión queda lista automáticamente: anfitrión con blancas e invitado con negras. El lobby recibe cambios mediante WebSocket same-origin en `/ws`; crear, unirse, salir y cancelar usan HTTP. Las salas viven solo en memoria, admiten dos sesiones y se pierden al reiniciar el backend. Salir como invitado libera el lugar; salir como anfitrión elimina la sala. PostgreSQL no guarda salas.
+En el lobby, `Crear sala` abre un formulario breve. Al entrar la segunda sesión, la sala queda lista y el backend crea la partida: anfitrión con blancas, invitado con negras y turno inicial de blancas. El backend valida movimientos con `chess.js` 1.4.0; su posición actual usa FEN y conserva historial SAN en memoria para reglas como repetición. El lobby usa WebSocket same-origin `/ws`; las operaciones de sala y las consultas/comandos de dominio usan HTTP. No hay tablero visual todavía. Salas y partidas activas viven en memoria; solo partidas terminadas se archivan transaccionalmente en las tablas `games` y `moves`. PostgreSQL no guarda sesiones ni salas.
 
 Para detener servicios sin borrar los datos guardados:
 
@@ -49,13 +49,13 @@ La app debe estar levantada y el dispositivo debe poder alcanzar el equipo anfit
 
 ## Límites conocidos
 
-- El modo contra bot sigue deshabilitado hasta Fase 7. La sala lista solo anuncia inicio y colores; tablero y reglas pertenecen a fases posteriores.
-- Las sesiones y salas activas son temporales y viven en memoria; reiniciar el backend las elimina.
-- Cerrar pestaña no cancela la sala. Usa `Cancelar sala` o `Salir de la sala`; las salas no tienen expiración automática por desconexión en esta fase.
+- El modo contra bot sigue deshabilitado hasta Fase 7. La sala lista anuncia inicio y colores. El servidor ya mantiene y valida el dominio de ajedrez; el tablero visual pertenece a la fase siguiente.
+- Las sesiones, salas y partidas activas viven en memoria; reiniciar el backend las elimina.
+- Cerrar pestaña no cancela la sala. Cancela una sala antes de que entre el segundo jugador; la salida de una partida activa quedará disponible desde la pantalla de partida.
 - El puerto predeterminado es 8080. Si otra aplicación lo ocupa, hay que liberarlo antes del arranque normal.
 - La prueba LAN desde un celular en la misma red pasó el 2026-10-15.
 - La conexión al puerto LAN se enlaza a todas las interfaces del anfitrión. Úsala solo en una red de confianza.
-- PostgreSQL conserva su volumen entre paradas normales; partidas y esquema de juego aún no existen.
+- PostgreSQL conserva su volumen entre paradas normales. Reiniciar backend pierde sesiones, salas, partidas activas y cualquier archivo pendiente de reintento.
 
 ## Documentación
 

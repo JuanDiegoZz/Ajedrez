@@ -1,4 +1,4 @@
-# Árbol vigente — Fase 3
+# Árbol vigente — Fase 4
 
 Estructura de producto verificada el 2026-10-15. Se omiten `node_modules`, `dist` y datos locales generados.
 
@@ -18,11 +18,16 @@ ajedrez/
 │   │   ├── server.js
 │   │   ├── sessions.js
 │   │   ├── rooms.js
-│   │   └── lobby.js
+│   │   ├── lobby.js
+│   │   ├── games.js
+│   │   └── game-archive.js
 │   └── test/
 │       ├── sessions.test.js
 │       ├── rooms.test.js
-│       └── rooms-api.test.js
+│       ├── rooms-api.test.js
+│       ├── games.test.js
+│       ├── games-api.test.js
+│       └── game-archive.test.js
 ├── frontend/
 │   ├── Dockerfile
 │   ├── nginx.conf
@@ -44,4 +49,4 @@ ajedrez/
 └── .codex/
 ```
 
-Fase 3 añade salas humanas en memoria, HTTP para operaciones, WebSocket para cambios del lobby y estados responsive de espera/lista. Tablero, reglas, bot e historial siguen fuera de esta fase. Las carpetas de datos locales y cachés de herramientas no forman parte del árbol de producto.
+Fase 4 añade el dominio autoritativo `chess.js` y el archivo transaccional de partidas terminadas. El tablero visual, la sincronización de jugadas entre navegadores y el bot siguen fuera de esta fase. Las carpetas de datos locales y cachés de herramientas no forman parte del árbol de producto.

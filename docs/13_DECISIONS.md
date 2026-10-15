@@ -24,7 +24,7 @@ Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. 
 - Decisión: usar librería madura, sin reimplementar reglas completas.
 - Razón: reducir errores y liberar tiempo para interacción.
 - Descartado: motor propio de reglas.
-- Consecuencia: la dependencia concreta se propone en ADR-004.
+- Consecuencia: la dependencia concreta se fijó en ADR-004 para Fase 4.
 
 ### ADR-003 — Sesión temporal de entrada
 
@@ -33,6 +33,27 @@ Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. 
 - Decisión: guardar sesiones en memoria con ID aleatorio opaco. `ajedrez_session` guarda solo ese ID en cookie `HttpOnly`, `SameSite=Lax`, `Path=/`, con `Max-Age=7200`; el nombre no es identificador ni credencial. No usa `Secure` porque el acceso aprobado es HTTP LAN.
 - Razón: conservar la sesión tras recargar sin guardar secretos o agregar autenticación.
 - Consecuencia: sesiones vencen tras dos horas sin actividad o al reiniciar backend. El navegador no guarda el nombre en `localStorage`.
+
+### ADR-004 — chess.js como reglas en servidor
+
+- Estado: aceptada al autorizar Fase 4, 2026-10-15.
+- Decisión: fijar `chess.js` 1.4.0 como único motor de reglas. Cada partida activa conserva una instancia `Chess` en memoria; FEN representa posición y el historial del motor conserva SAN/repeticiones.
+- Razón: delegar legalidad, reglas especiales y resultados al motor, sin lógica manual duplicada.
+- Consecuencia: el servidor es autoridad; el frontend aún no incluye tablero ni un segundo motor.
+
+### ADR-006 — Servidor autoritativo con revisión y deduplicación
+
+- Estado: aceptada para el dominio de Fase 4, 2026-10-15.
+- Decisión: cada mutación valida sesión, turno, estado y revisión en una sección síncrona; `requestId` repite una operación exacta sin aplicarla de nuevo.
+- Razón: impedir turnos inválidos y dobles movimientos por reintento.
+- Consecuencia: HTTP expone snapshot y movimientos legales; WebSocket sigue limitado al lobby hasta la fase de sincronización visual.
+
+### ADR-007 — Memoria activa; PostgreSQL para archivo final
+
+- Estado: aceptada para Fase 4, 2026-10-15.
+- Decisión: mantener partidas activas en memoria y archivar solo partidas terminadas, con sus movimientos, en `games` y `moves` dentro de una transacción.
+- Razón: preservar resultado e historial sin guardar sesiones, salas ni cada movimiento activo.
+- Consecuencia: reinicio pierde partidas activas y archivos pendientes; el backend reintenta un archivo fallido cada 10 segundos mientras siga activo.
 
 ### ADR-005 — WebSocket para lobby
 
@@ -54,13 +75,10 @@ Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. 
 
 ## Propuestas para revisión humana
 
-Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fase 2; ADR-005 y ADR-008 se aceptaron dentro del alcance de Fase 3.
+Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fase 2; ADR-004, 006 y 007 para Fase 4; ADR-005 y ADR-008 para Fase 3.
 
 | ID | Decisión propuesta | Razón y alternativa descartada | Consecuencia / detalle |
 |---|---|---|---|
-| ADR-004 | chess.js como reglas en servidor | Genera movimientos, valida, mantiene FEN/historial y detecta finales; no incluye IA. Descartar reglas propias | Versionar al implementar y probar integración. Destinos viajan al cliente. `04`, `07` |
-| ADR-006 | Servidor autoritativo con snapshot completo, revisión y requestId | Evitar divergencia, doble envío y legalidad en cliente; descartar estado optimista como autoridad | Una mutación síncrona; historial completo para repetición. `08`, `09` |
-| ADR-007 | Memoria activa; PostgreSQL solo archivo final, dos tablas | Sesiones/salas temporales no justifican tablas; descartar persistencia por jugada y recuperación durable | Games/moves en transacción; caída puede perder activos y archivo pendiente. `08` |
 | ADR-009 | Bot minimax de dos medias jugadas, material y trabajador acotado | Considera respuesta rival; aleatorio no defiende, Stockfish excede alcance | Dificultad fija y defensa limitada al horizonte. `10` |
 | ADR-010 | Cuatro pantallas y diseño accesible desde inicio | Crear sala/promoción/abandono caben en diálogos; descartar pantallas y librerías visuales adicionales | Teclado, foco y movimiento reducido obligatorios; CSS primero. `02`, `06` |
 | ADR-011 | Un origen web en puerto LAN 8080, proxy API/WS y DB interna | Evita URLs localhost en clientes y CORS innecesario; descartar tres puertos públicos | Proxy con upgrade; pruebas reales de firewall/Wi-Fi. `07` |
@@ -72,7 +90,7 @@ Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fa
 
 | Pendiente | Quién / cuándo | Cómo resolver sin ampliar alcance |
 |---|---|---|
-| Aprobar MVP y ADR-004, 006–007, 009–014 | Responsable del proyecto, antes de sus fases | Revisar propuestas y políticas de tablas/desconexión/pérdida de activos |
+| Aprobar MVP y ADR-009–014 | Responsable del proyecto, antes de sus fases | Revisar alcance de bot, UX, LAN, desconexión y evaluación |
 | Autorizar implementación | Responsable del proyecto, después de revisión | Registrar autorización explícita en `14` |
 | Framework HTTP, cliente PostgreSQL y herramientas build/pruebas | Implementador, fase 1 | Context7, compatibilidad, costo mínimo; candidatos Express y SQL directo, sin ORM por defecto |
 | Versiones y licencia de dependencias/piezas | Implementador, fases 1 y 5 | Verificar fuentes actuales, fijar lockfile y atribuciones; sin assets remotos obligatorios |

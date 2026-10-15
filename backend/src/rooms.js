@@ -28,6 +28,7 @@ function publicRoom(room) {
     hostName: room.hostName,
     guestName: room.guestName,
     status: room.status,
+    gameId: room.gameId,
     players: room.guestSessionId ? 2 : 1,
     hostColor: 'Blancas',
     guestColor: 'Negras',
@@ -56,6 +57,7 @@ export function createRoom(session, value) {
     guestSessionId: null,
     guestName: null,
     status: 'waiting',
+    gameId: null,
   };
   rooms.set(room.id, room);
   roomBySession.set(session.id, room.id);
@@ -74,6 +76,24 @@ export function getRoomForSession(session) {
     return null;
   }
   return publicRoom(room);
+}
+
+export function getRoomGameData(id) {
+  const room = rooms.get(id);
+  if (!room || room.status !== 'ready' || !room.guestSessionId) return null;
+  return {
+    id: room.id,
+    hostSessionId: room.hostSessionId,
+    hostName: room.hostName,
+    guestSessionId: room.guestSessionId,
+    guestName: room.guestName,
+  };
+}
+
+export function setRoomGame(id, gameId) {
+  const room = rooms.get(id);
+  if (!room || room.status !== 'ready') throw new RoomError('ROOM_NOT_READY', 'La sala todavía no está lista.');
+  room.gameId = gameId;
 }
 
 export function joinRoom(session, id) {
@@ -103,6 +123,7 @@ export function leaveRoom(session, id) {
   const room = activeRoom(session);
   if (!room) return null;
   if (id && room.id !== id) throw new RoomError('ROOM_NOT_FOUND', 'La sala ya no está disponible.', 404);
+  if (room.gameId) throw new RoomError('GAME_ACTIVE', 'La partida ya comenzó. La salida estará disponible desde la pantalla de partida.');
   if (room.hostSessionId === session.id) {
     removeRoom(room);
     return null;
