@@ -1,6 +1,29 @@
 ﻿# 14 — Progreso, auditoría y evidencia
 
-## Estado actual — Fase 6 — 2026-10-15
+## Estado actual — Fase 7 — 2026-10-15
+
+**Fase 7: COMPLETADA — 2026-10-15.** El modo privado contra bot reutiliza el dominio autoritativo y archivo existente. No se avanzó a Fase 8.
+
+- [x] El checkpoint llamado Fase 6 ya contenía `bot.js`, integración, UI y tests; la documentación aún los marcaba pendientes. Se conservaron, auditaron y verificaron; se corrigió suscripción WebSocket perdida y se añadió cobertura para defender una dama amenazada.
+- [x] Lobby inicia partida privada directamente; humano blancas y bot negras. El bot se representa como `Bot`, sin sesión/cookie ficticia.
+- [x] `backend/src/bot.js` usa `chess.js` 1.4.0 para legalidad, copia/reproducción del historial, movimientos, undo y estados terminales. Minimax busca dos medias jugadas con evaluación material, desempate determinista, alpha-beta, límite 300 ms/5000 nodos y trabajador con timeout de 2 s.
+- [x] Servidor aplica candidato solo si gameId/revisión/turno/estado/conexión siguen vigentes y vuelve a validar con chess.js. Un request duplicado no inicia otro cálculo. Hasta dos workers corren en paralelo; abandono y desconexión invalidan el resultado tardío.
+- [x] `/ws` emite snapshots de `botThinking`, posición y finalización. Se corrigió referencia al socket activo: antes, juego iniciado con socket abierto no enviaba `game:subscribe`; el navegador quedaba mostrando “El bot está pensando…” aunque el servidor ya había movido.
+- [x] Archivo existente `games`/`moves` conserva modo `bot`, nombre `Bot`, resultado y todas las jugadas SAN; no se añadió esquema ni dependencia.
+- [x] `backend npm test`: 57/57 correctos. Incluye jugada legal, captura, defensa de dama amenazada, mate en uno, evitar mate inmediato, promoción, terminales, revisión del bot, recuperación y archivo.
+- [x] `frontend npm run build`: correcto. `docker compose config --quiet` y `docker compose up -d --build`: correctos; web publicado `0.0.0.0:8080`, backend/DB sin puertos host, PostgreSQL healthy. `/api/health`: 200, backend y DB disponibles.
+- [x] Playwright en contexto independiente cubrió entrada, bot directo, orientación blanca, e2-e4, dos respuestas automáticas legales, siguiente movimiento humano, refresh con misma partida/FEN/historial/revisión y abandono; PostgreSQL guardó resultado `0-1`, motivo `resignation`, nombre `Bot` y 4 medias jugadas. Snapshot mostró estados `botThinking: true/false`; consola limpia.
+- [x] Playwright a 390/320 px: `scrollWidth` 375/305 y tablero 343/273 px, sin desbordamiento. Tests existentes conservan flujos humanos A/B, recuperación, sesiones, salas y archivo.
+- [x] Medición worker en 20 posiciones (9 apertura, 5 medio juego, 6 final): mínimo/mediana/máximo por grupo 52.7/83.9/153.5 ms, 43.8/58.7/77.1 ms y 40.8/51.1/72.9 ms; cero límites/fallback. Referencias apertura/medio juego/táctica: 47.5/98.9/27.7 ms en búsqueda local.
+- [x] README, árbol, ADR-009 y estrategia/progreso de bot actualizados. No se implementaron Stockfish, Fase 8 ni funcionalidad fuera de alcance.
+
+### Límites de Fase 7
+
+- Minimax tiene horizonte de dos medias jugadas, dificultad fija y como máximo dos búsquedas simultáneas; no pretende juego competitivo.
+- Medición hecha en el equipo actual; hardware distinto puede tardar más. Al reiniciar backend se pierden partidas activas según decisión vigente.
+- La prueba Playwright de modo bot usó un navegador contra el worker del backend, no un segundo usuario humano. Los flujos humano vs humano pasan por regresión automatizada backend/WS.
+
+## Estado histórico — Fase 6 — 2026-10-15
 
 **Fase 6: COMPLETADA — 2026-10-15.** Recuperación temporal de salas y partidas, reconexión WebSocket y archivo de timeout verificados. No se avanzó a Fase 7.
 
@@ -17,7 +40,7 @@
 - [x] Playwright: sala esperando permanece oculta y expira tras 60 s; observador sigue sin verla y anfitrión vuelve al lobby. UI muestra aviso de expiración recibido después del snapshot vacío.
 - [x] Playwright timeout de 60 s: rival vio victoria por desconexión; archivo indicó guardado; jugador tardío recibió partida finalizada sin reactivarla; movimientos permanecieron bloqueados. Sin `pageerror`.
 - [x] Playwright con cookie inválida simulando reinicio mostró “El servidor se reinició o tu sesión terminó; la partida no puede recuperarse. Vuelve a entrar.” y pantalla de entrada. HTTP 410 esperado aparece en consola; sin error JavaScript.
-- [x] No se añadieron dependencias, tablas, almacenamiento durable, bot ni funciones de Fase 7. README, protocolo, ADR-013/015, árbol y progreso actualizados.
+- [x] No se añadieron dependencias, tablas ni almacenamiento durable. README, protocolo, ADR-013/015, árbol y progreso actualizados.
 
 ### Límites de Fase 6
 

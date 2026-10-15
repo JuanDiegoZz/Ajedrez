@@ -6,7 +6,7 @@ Solo las decisiones **aceptadas** prevalecen sobre requisitos. “Propuesta” d
 
 Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. Nuevas propuestas fechadas 2026-10-15. Documentos especializados contienen detalle operativo; este registro mantiene motivo, alternativa y consecuencia.
 
-## Decisiones aceptadas existentes
+## Decisiones aceptadas
 
 ### ADR-001 — Alcance local y pequeño
 
@@ -74,6 +74,14 @@ Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. 
 - Descartado: botón “Listo” o selección de color.
 - Consecuencia: esta fase anuncia que está lista y asigna colores; no inicia tablero ni reglas de ajedrez.
 
+### ADR-009 — Bot minimax acotado
+
+- Estado: aceptada al autorizar Fase 7, 2026-10-15.
+- Decisión: humano con blancas y bot con negras; minimax de dos medias jugadas sobre copia de la partida, evaluador material, desempate determinista y trabajador Node con límite de 300 ms/5000 nodos, timeout de 2 s y máximo de dos cálculos simultáneos.
+- Razón: considerar respuesta inmediata sin integrar un motor competitivo ni bloquear el backend.
+- Descartado: jugada aleatoria como estrategia, Stockfish y heurísticas avanzadas.
+- Consecuencia: dificultad fija; partidas activas usan el mismo dominio/archivo y se pierden al reiniciar backend. El bot conserva debilidad táctica más allá de su horizonte.
+
 ### ADR-013 — Recuperación temporal por desconexión
 
 - Estado: aceptada al autorizar Fase 6, 2026-10-15.
@@ -92,11 +100,10 @@ Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. 
 
 ## Propuestas para revisión humana
 
-Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fase 2; ADR-004, 006 y 007 para Fase 4; ADR-005 y ADR-008 para Fase 3; ADR-013 para Fase 6.
+Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fase 2; ADR-004, 006 y 007 para Fase 4; ADR-005 y ADR-008 para Fase 3; ADR-009 para Fase 7; ADR-013 y ADR-015 para Fase 6.
 
 | ID | Decisión propuesta | Razón y alternativa descartada | Consecuencia / detalle |
 |---|---|---|---|
-| ADR-009 | Bot minimax de dos medias jugadas, material y trabajador acotado | Considera respuesta rival; aleatorio no defiende, Stockfish excede alcance | Dificultad fija y defensa limitada al horizonte. `10` |
 | ADR-010 | Cuatro pantallas y diseño accesible desde inicio | Crear sala/promoción/abandono caben en diálogos; descartar pantallas y librerías visuales adicionales | Teclado, foco y movimiento reducido obligatorios; CSS primero. `02`, `06` |
 | ADR-011 | Un origen web en puerto LAN 8080, proxy API/WS y DB interna | Evita URLs localhost en clientes y CORS innecesario; descartar tres puertos públicos | Proxy con upgrade; pruebas reales de firewall/Wi-Fi. `07` |
 | ADR-012 | Tablas automáticas según política simplificada | Evitar reclamaciones y arbitraje competitivo; descartar afirmar reglas FIDE completas | Repetición/50 movimientos automáticos, causa visible. `04` |
@@ -106,13 +113,13 @@ Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fa
 
 | Pendiente | Quién / cuándo | Cómo resolver sin ampliar alcance |
 |---|---|---|
-| Aprobar ADR-009–012 y ADR-014 | Responsable del proyecto, antes de sus fases | Revisar bot, UX, LAN, reglas de tablas y evaluación |
+| Aprobar ADR-010–012 y ADR-014 | Responsable del proyecto, antes de sus fases | Revisar UX, LAN, reglas de tablas y evaluación |
 | Autorizar implementación | Responsable del proyecto, después de revisión | Registrar autorización explícita en `14` |
 | Framework HTTP, cliente PostgreSQL y herramientas build/pruebas | Implementador, fase 1 | Context7, compatibilidad, costo mínimo; candidatos Express y SQL directo, sin ORM por defecto |
 | Versiones y licencia de dependencias/piezas | Implementador, fases 1 y 5 | Verificar fuentes actuales, fijar lockfile y atribuciones; sin assets remotos obligatorios |
 | Proxy estático concreto y puerto backend interno | Implementador, fase 1 | Elegir opción pequeña y documentar configuración verificada |
 | Paleta y combinaciones reales | Implementador/diseñador, fase 5 | Medir contraste de piezas, casillas, marcadores y foco |
-| Tiempos de bot y objetivos LAN | Implementador, fase 7 | Medir en hardware de demo; ajustar solo con evidencia |
+| Tiempos de bot y objetivos LAN | Implementador, fase 7 | Medir en hardware de demo; ajustar solo con evidencia; medición inicial registrada en `10` |
 | Disponibilidad de estudiantes y requisitos de rúbrica | Responsable académico, antes de fase 8 | Confirmar muestra, consentimiento y si requiere SUS o esquema específico |
 
 Estos pendientes no autorizan dejar sin especificar reglas del juego durante implementación. Si la rúbrica exige recuperación durable o tablas normalizadas adicionales, volver a revisar alcance antes de añadirlas.

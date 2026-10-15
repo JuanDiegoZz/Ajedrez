@@ -22,6 +22,15 @@ test('bot takes an undefended queen and finds mate in one', () => {
   assert.equal(chess.isCheckmate(), true);
 });
 
+test('bot moves its queen before the opponent can capture it', () => {
+  const fen = '7k/8/8/3q4/8/8/B7/7K b - - 0 1';
+  const chess = new Chess(fen);
+  const result = chooseBotMove({ fen });
+
+  chess.move(result.move);
+  assert.equal(chess.moves({ verbose: true }).some((move) => move.captured === 'q'), false);
+});
+
 test('bot avoids an immediate mate when a safe move exists', () => {
   const fen = 'r1bqkbnr/p1ppp1pp/2n5/1p3p2/7P/P3P3/RPPP1PP1/1NBQKBNR b Kkq - 1 4';
   const result = chooseBotMove({ fen });

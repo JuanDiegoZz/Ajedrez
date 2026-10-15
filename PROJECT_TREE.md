@@ -1,4 +1,4 @@
-# Árbol vigente — Fase 6
+# Árbol vigente — Fase 7
 
 Estructura de producto verificada el 2026-10-15. Se omiten `node_modules`, `dist` y datos locales generados.
 
@@ -21,6 +21,7 @@ ajedrez/
 │   │   ├── lobby.js
 │   │   ├── recovery.js
 │   │   ├── games.js
+│   │   ├── bot.js
 │   │   └── game-archive.js
 │   └── test/
 │       ├── sessions.test.js
@@ -29,6 +30,7 @@ ajedrez/
 │       ├── games.test.js
 │       ├── games-api.test.js
 │       ├── games-ws.test.js
+│       ├── bot.test.js
 │       ├── recovery.test.js
 │       ├── recovery-ws.test.js
 │       └── game-archive.test.js
@@ -54,4 +56,4 @@ ajedrez/
 └── .codex/
 ```
 
-Fase 6 añade presencia y recuperación temporal al WebSocket existente, con timers backend y pruebas de timeout. `chess.js` sigue siendo autoritativo; bot queda fuera de alcance. Las carpetas de datos locales y cachés de herramientas no forman parte del árbol de producto.
+Fase 7 añade búsqueda minimax acotada en un trabajador Node; `chess.js` sigue siendo la autoridad de reglas. Fases 6–7 reutilizan el WebSocket existente para recuperación y snapshots. Las carpetas de datos locales y cachés de herramientas no forman parte del árbol de producto.

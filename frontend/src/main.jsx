@@ -43,6 +43,7 @@ function App() {
   const dialogRef = useRef(null);
   const currentRoomRef = useRef(null);
   const currentGameRef = useRef(null);
+  const socketRef = useRef(null);
   const gameSubscriptionRef = useRef({ socket: null, id: null });
 
   function changeCurrentRoom(room) {
@@ -166,6 +167,7 @@ function App() {
       if (!active) return;
       setConnection('connecting');
       socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`);
+      socketRef.current = socket;
       socket.addEventListener('open', () => {
         socket.send(JSON.stringify({ type: 'lobby:subscribe' }));
         subscribeToGame(currentRoomRef.current?.gameId ?? currentGameRef.current?.id);
@@ -216,6 +218,7 @@ function App() {
       });
       socket.addEventListener('close', (event) => {
         if (!active) return;
+        if (socketRef.current === socket) socketRef.current = null;
         if (gameSubscriptionRef.current.socket === socket) gameSubscriptionRef.current = { socket: null, id: null };
         if (event.code === 4001) {
           setConnection('replaced');
@@ -241,6 +244,7 @@ function App() {
       active = false;
       clearTimeout(retryTimer);
       clearTimeout(connectionNoticeTimer);
+      if (socketRef.current === socket) socketRef.current = null;
       socket?.close();
     };
   }, [session, roomsRetry]);
@@ -334,7 +338,7 @@ function App() {
       if (!response.ok) throw new Error(result.error?.message || 'No se pudo iniciar la partida contra bot.');
       changeCurrentRoom(null);
       changeCurrentGame(result.game);
-      const socket = gameSubscriptionRef.current.socket;
+      const socket = socketRef.current;
       if (socket?.readyState === WebSocket.OPEN && gameSubscriptionRef.current.id !== result.game.id) {
         gameSubscriptionRef.current = { socket, id: result.game.id };
         socket.send(JSON.stringify({ type: 'game:subscribe', gameId: result.game.id }));
