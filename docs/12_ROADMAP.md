@@ -19,7 +19,7 @@ La progresión integra reglas con tablero y accesibilidad desde su primera apari
 | 6 — Recuperación | Heartbeat, gracia, snapshot, pestaña reemplazada y fallos de guardado | Corte temporal y definitivo de red; sin jugadas duplicadas; caída/reinicio con mensajes honestos; ensayo LAN | `05`, `08`, `09` |
 | 7 — Bot | Modo privado con estrategia acotada y misma UX | Legalidad, defensa inmediata, mate en uno, presupuesto, lobby sin bloqueo y cancelación tardía | `10`, `11` |
 | 8 — Evaluación e iteración — **COMPLETADA** | Auditoría heurística, iteraciones visuales A/B y regresión técnica | Hallazgos vinculados a cambios y verificaciones documentados en `14`. La evaluación comparativa formal con aproximadamente cinco estudiantes no se realizó; queda aceptada como limitación metodológica, sin métricas humanas inventadas | `02`, `11`, `14` |
-| 9 — Cierre y demo | Revisión final, instrucciones y evidencia | Cumplir checklist inferior, ensayo de arranque y partida humana/bot en LAN; revisión académica | README, setup, `14` |
+| 9 — Cierre y demo — **COMPLETADA** | Revisión final, instrucciones, guion, checklist y contingencia | Tests, build, Compose, salud DB/API, demo A/B/bot/refresh, temas, accesibilidad y responsive verificados; límites y evaluación humana ausente documentados | README, `15`, `14` |
 
 Cada fase deja un entregable comprobable. Fases 3–4 no se presentan como aplicación completa. Si una fase resulta demasiado grande al planificar código, dividir dentro de su responsabilidad, sin abrir la siguiente ni añadir funciones.
 

@@ -1,20 +1,25 @@
 # Ajedrez UX
 
-Aplicación universitaria de ajedrez para 2–5 personas en red local. Fase 7 añade partidas privadas contra bot al backend autoritativo Node.js, PostgreSQL, Nginx y Compose.
+Aplicación universitaria de ajedrez para 2–5 personas en una red local de confianza. Ofrece partidas humanas y contra bot mediante React, Node.js, PostgreSQL, Nginx y Docker Compose.
 
 ## Arranque
 
-Requiere Docker Desktop con Docker Compose y acceso a Internet al descargar imágenes la primera vez.
+Requiere Docker Desktop iniciado, Docker Compose v2 y un navegador moderno. No hace falta instalar Node.js ni PostgreSQL en el equipo anfitrión para ejecutar la aplicación con Compose. Se requiere acceso a Internet la primera vez que se descargan imágenes y paquetes durante la compilación.
 
 ```powershell
-docker compose config
-docker compose build
-docker compose up -d
+docker compose up -d --build
 docker compose ps
-docker compose logs --tail=80
 ```
 
-Abre `http://localhost:8080`. La app conserva una sesión temporal al recargar y muestra el estado de frontend, backend y PostgreSQL. El endpoint `GET /api/health` consulta `SELECT 1` en PostgreSQL. Solo Nginx publica un puerto; backend y base de datos quedan en la red interna de Compose.
+Abre `http://localhost:8080`. La app conserva una sesión temporal al recargar y muestra el estado de frontend, backend y PostgreSQL. Comprueba `Invoke-RestMethod http://localhost:8080/api/health`; se espera backend y base de datos `available`. El endpoint llama al backend, que ejecuta `SELECT 1` en PostgreSQL. Solo Nginx publica `0.0.0.0:8080`; backend y base de datos quedan en la red interna de Compose.
+
+Para comprobar PostgreSQL directamente:
+
+```powershell
+docker compose exec -T database sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "SELECT 1;"'
+```
+
+Las pruebas locales opcionales son `cd backend; npm test` y `cd frontend; npm run build`. No hacen falta para ejecutar la aplicación con Docker.
 
 El encabezado permite cambiar modo claro/oscuro. Los detalles técnicos están en “Servicios disponibles” / “Estado de servicios”, al pie. La interfaz usa piezas SVG y tipografía locales, sin CDN; [créditos y licencias](frontend/public/assets/CREDITS.txt) también están disponibles desde el pie de la aplicación.
 
@@ -36,7 +41,7 @@ docker compose down
 
 ## Acceso desde LAN
 
-Obtén la IPv4 del adaptador conectado a la misma red local, por ejemplo con `ipconfig`. En esta máquina se detectó `192.168.1.15` el 2026-10-15; la dirección puede cambiar.
+Obtén la IPv4 del adaptador Ethernet o Wi-Fi conectado a la red de demo; en Windows, `ipconfig` muestra las direcciones. Ignora adaptadores virtuales, loopback y `169.254.x.x`. La dirección puede cambiar entre redes.
 
 Desde otro dispositivo en la misma LAN, abre:
 
@@ -44,18 +49,20 @@ Desde otro dispositivo en la misma LAN, abre:
 http://<IPv4-LAN>:8080
 ```
 
-La app debe estar levantada y el dispositivo debe poder alcanzar el equipo anfitrión. Si Windows solicita acceso de red, revisa manualmente la regla de firewall para TCP 8080; el proyecto no cambia el firewall. El 2026-10-15 se confirmó desde un celular en la misma LAN que la página carga y muestra frontend, backend y PostgreSQL disponibles en `http://192.168.1.15:8080`.
+La app debe estar levantada y el dispositivo debe poder alcanzar el equipo anfitrión. Si Windows solicita acceso de red, revisa manualmente la regla de firewall para TCP 8080; el proyecto no cambia el firewall. El 2026-10-15 se confirmó desde un celular en la misma LAN que la página carga y muestra frontend, backend y PostgreSQL disponibles en `http://192.168.1.15:8080`. Nginx entrega React y enruta `/api/` y `/ws` al backend en el mismo origen.
 
 ## Problemas frecuentes
 
-- **El puerto 8080 ya está en uso:** Compose no puede iniciar `web`. Detén el servicio que lo ocupa o libera el puerto y vuelve a ejecutar `docker compose up -d`.
+- **El puerto 8080 ya está en uso:** identifica el proceso con `$listener = Get-NetTCPConnection -State Listen -LocalPort 8080; Get-Process -Id $listener.OwningProcess`. Para contenedores, usa `docker ps --filter publish=8080`. Revisa el servicio antes de detenerlo; no cierres automáticamente otros proyectos.
 - **Backend o PostgreSQL no disponible:** consulta `docker compose ps` y `docker compose logs --tail=80 backend database web`. La página señala qué servicio no responde y actualiza el estado cada cinco segundos.
-- **La primera descarga o compilación falla:** confirma que Docker Desktop esté iniciado y repite `docker compose build` cuando haya conexión a Internet.
+- **La primera descarga o compilación falla:** confirma que Docker Desktop esté iniciado y repite `docker compose up -d --build` cuando haya conexión a Internet.
 - **Otro equipo no abre la URL LAN:** confirma que ambos equipos estén en la misma red, usa la IPv4 vigente del anfitrión y revisa manualmente firewall o aislamiento de clientes del Wi-Fi.
+- **Diagnóstico general:** ejecuta `docker compose config --quiet`, `docker compose ps` y `docker compose logs --tail=80 web backend database`. No borres volúmenes ni detengas contenedores de otros proyectos como primer intento.
 
 ## Límites conocidos
 
 - El bot tiene dificultad fija y horizonte corto; no es una IA competitiva. Se limita a dos cálculos simultáneos.
+- Es un proyecto universitario de demostración para 2–5 personas en una LAN de confianza; no está diseñado para acceso público ni datos sensibles.
 - Sesiones, salas, partidas activas y temporizadores de recuperación viven en memoria. Reiniciar backend los elimina; la partida activa no se recupera y la app solicita volver a entrar.
 - La gracia de 60 segundos empieza cuando el servidor detecta la desconexión; heartbeat consulta cada 10 segundos y un corte silencioso puede tardar hasta unos 20 segundos en detectarse.
 - El corte y la recuperación se probaron en Playwright con caída del WebSocket. No se hizo otro corte físico de red LAN en esta fase.
@@ -63,6 +70,7 @@ La app debe estar levantada y el dispositivo debe poder alcanzar el equipo anfit
 - La prueba LAN desde un celular en la misma red pasó el 2026-10-15.
 - La conexión al puerto LAN se enlaza a todas las interfaces del anfitrión. Úsala solo en una red de confianza.
 - PostgreSQL conserva su volumen entre paradas normales. Reiniciar backend pierde sesiones, salas, partidas activas y cualquier archivo pendiente de reintento.
+- No se realizó una evaluación comparativa formal con aproximadamente cinco participantes. No existen métricas humanas cuantitativas posteriores al rediseño; el protocolo disponible no representa resultados.
 
 ## Documentación
 
@@ -71,4 +79,5 @@ La app debe estar levantada y el dispositivo debe poder alcanzar el equipo anfit
 - [Roadmap](docs/12_ROADMAP.md)
 - [Decisiones](docs/13_DECISIONS.md)
 - [Progreso y evidencia](docs/14_PROGRESS.md)
+- [Guion de demo y checklist](docs/15_FINAL_DEMO.md)
 - [Árbol vigente](PROJECT_TREE.md)

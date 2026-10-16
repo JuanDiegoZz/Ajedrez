@@ -1,6 +1,23 @@
 ﻿# 14 — Progreso, auditoría y evidencia
 
-## Estado actual — Fase 8 — 2026-10-15
+## Estado actual — Fase 9 — 2026-10-15
+
+**Fase 9: COMPLETADA — 2026-10-15.** Regresión final, arranque reproducible, documentación de demo, defensa UX y plan de contingencia preparados. No se agregaron funciones ni cambios de lógica.
+
+- Estado inicial: `main`, working tree limpio, último commit `6654560 docs: close phase 8 UX evaluation`; sin remoto configurado.
+- `backend`: `npm test`, 57/57 correctos. `frontend`: `npm run build`, correcto.
+- `docker compose config --quiet` y `docker compose up -d --build`: correctos. PostgreSQL healthy y `SELECT 1` devuelve 1. `/api/health`: HTTP 200, backend y base disponibles.
+- Red: web publicado en `0.0.0.0:8080`; `docker inspect` confirma backend `3000/tcp` y PostgreSQL `5432/tcp` sin bindings de host. Nginx enruta `/api/` y `/ws` en el mismo origen. `http://192.168.1.15:8080/api/health` responde desde el anfitrión por su IPv4 LAN actual.
+- Playwright A/B: entrada por Enter, creación/unión, blancas/negras, orientación, WebSocket `ws://localhost:8080/ws`, e2–e4, d7–d5, exd5 sincronizado, refresh negro con mismo color/posición/turno, abandono archivado y regreso al lobby. Consola limpia.
+- Playwright bot: indicador “El bot está pensando…”, respuesta a e2–e4, turno humano y refresh conserva posición. Teclado movió e2–e4 en otro contexto.
+- Presentación/accesibilidad: foco del diálogo Crear sala, Escape y retorno al activador; foco/Escape en abandono; promoción de caballo por teclado en fixture con API interceptada; reduced motion; tema de sistema oscuro, toggle y preferencia tras refresh.
+- Responsive: juego sin desbordamiento a 1440/1024/768/390/320 px. Contraste y responsive referenciados desde evidencia de Fase 8.
+- Recursos: doce SVG Cburnett locales, atribución, GPL-2.0-or-later y texto de licencia; Newsreader y OFL-1.1. No se requiere CDN.
+- PostgreSQL confirmó la partida humana de ensayo: resultado `resignation`, tres medias jugadas. `SELECT 1` respondió correctamente.
+- No hay `.env` real; `.env.example` es el único archivo de entorno. La revisión automática bloqueó eliminar 43 archivos temporales Playwright y 19 archivos de `frontend/dist`; todos están ignorados por Git y permanecen locales, fuera del cambio. Se conservan `node_modules` y metadata Serena para desarrollo.
+- Documentación de demo incluye checklist 10–15 min, guion 6–8 min, arquitectura, contingencia, límites y explicación de UX/ISO. El estudio comparativo con cinco personas sigue ausente según cierre aceptado de Fase 8.
+
+## Fase 8 — Evaluación e iteración — 2026-10-15
 
 **Fase 8: COMPLETADA — 2026-10-15.** Cierre aceptado con auditoría heurística, iteraciones visuales y regresión técnica documentadas. La evaluación comparativa con estudiantes no se realizó y queda como limitación metodológica, no como fallo del software.
 

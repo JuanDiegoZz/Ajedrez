@@ -51,7 +51,7 @@ ajedrez/
 │       ├── Piece.jsx
 │       └── styles.css
 ├── docs/
-│   ├── 00_VISION.md … 14_PROGRESS.md
+│   ├── 00_VISION.md … 15_FINAL_DEMO.md
 │   └── superpowers/plans/
 │       ├── 2026-10-15-fase-1-arranque-lan.md
 │       ├── 2026-10-15-fase-2-entrada-lobby.md
