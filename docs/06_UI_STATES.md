@@ -25,7 +25,7 @@ La sala cambia a partida sin paso “Listo” o botón “Comenzar”. El anunci
 
 ## Distribución
 
-Escritorio: tablero dominante a la izquierda, turno/jugadores arriba y panel secundario de historial a la derecha. Pantallas menores de 768 píxeles: una columna, turno antes del tablero y último movimiento después; historial plegable, sin ocultar resultado. Tablero cuadrado de hasta 640 píxeles, ajustado al ancho disponible; a 320 píxeles, casillas de al menos 32 píxeles. Coordenadas siempre visibles.
+Escritorio: tablero y jugadores en un marco común a la izquierda; turno, identidad, resultado e historial en bloques a la derecha. Hasta 900 píxeles: estado compacto antes del tablero e historial después, sin ocultar resultado. El marco ocupa hasta 640 píxeles, ajustado al ancho disponible; a 320 píxeles, casillas de al menos 32 píxeles. Coordenadas siempre visibles. Diagnóstico de servicios en un detalle desplegable al pie, sin competir con el juego.
 
 Orientación: blancas abajo para blancas y negras abajo para negras, estable toda la partida. No rotar por turno. Nombres y coordenadas no se invierten como texto.
 
@@ -51,23 +51,25 @@ Prioridad de capas: pieza legible siempre; fondo de última jugada, marcadores d
 
 Desplazamiento confirmado de 120–180 ms sin rebote. Captura retira pieza al aplicar snapshot; enroque anima rey y torre juntos; promoción muestra pieza elegida. Estado, turno y resultado se actualizan con confirmación, sin esperar transición. Snapshot de reconexión se aplica sin animar el historial. Nuevo snapshot cancela transición previa; nunca encadena una cola de animaciones. Con movimiento reducido, cambio inmediato más marcas de última jugada. CSS/plataforma primero; sin librería adicional de animación.
 
-## Sistema visual mínimo
+## Dirección visual vigente
 
-Valores iniciales propuestos, pendientes de validación visual y contraste real.
+Iteración autorizada de club moderno: marfil, tinta y latón; tablero protagonista, menú de modos e identidad editorial. No implica validación de satisfacción por estudiantes.
 
 | Elemento | Regla |
 |---|---|
-| Tipografía | Fuente del sistema sans-serif; cuerpo 16 px, secundario 14 px, títulos 24/32 px; interlineado 1.5 |
+| Tipografía | Newsreader local para títulos de 24–72 px; sistema sans-serif para cuerpo 16 px, información auxiliar 12–14 px y marcas editoriales breves de 10–12 px |
 | Espaciado | Escala 4, 8, 12, 16, 24 y 32 px; bloques separados 24 px |
 | Botones | Primario relleno, secundario con borde, peligro con texto explícito; altura mínima 44 px |
 | Inputs | Label persistente, altura 44 px, ayuda/error debajo; ancho disponible |
-| Cards | Una superficie, borde suave, radio 8 px; sin sombras decorativas múltiples |
-| Diálogos | Ancho hasta 420 px; margen 16 px; título y dos acciones como máximo salvo promoción |
+| Cards | Acciones de juego grandes con pieza representativa; salas compactas con anfitrión, ocupación y unión; profundidad discreta y radios de 4–8 px |
+| Diálogos | Ancho hasta 448 px; margen 16 px; título y dos acciones como máximo salvo promoción |
 | Alertas | Icono + texto + acción recuperable; error no desaparece por temporizador |
-| Fondo/texto | Fondo #F8FAFC, superficie #FFFFFF, texto #0F172A, secundario #475569 |
-| Acción/foco | Azul #1D4ED8; hover #1E40AF; verificar foco sobre cada superficie |
-| Funciones | Éxito #166534, aviso #92400E, peligro #B91C1C; acompañar texto/icono |
-| Tablero | Casilla clara #F0D9B5 y oscura #B58863 como candidatas; piezas y marcadores deben probar contraste en ambas |
+| Fondo/texto | Claro: fondo marfil #F4F0E7 y superficie #FFFCF5. Oscuro: tinta #111C24 y superficie #1B2A33. Texto y secundario contrastados por tema |
+| Acción/foco | Claro: acción petróleo, acento bronce #795A2D; oscuro: acción latón #DFC18B. Foco visible en ambas superficies |
+| Funciones | Éxito, aviso y peligro cambian por tema; acompañar color con texto/icono |
+| Tablero | Marfil/salvia en marco tinta. Selección doble, punto para destino, anillo de captura, esquinas para última jugada y signo de alerta en jaque; foco independiente |
 | Disabled/loading | Etiqueta que explique espera, conservar legibilidad; sin spinner sin texto |
 
-No agregar temas, catálogo de componentes, iconografía ornamental ni tokens avanzados. Los criterios accesibles de `02` prevalecen sobre estos colores candidatos.
+Ofrecer únicamente tema claro y oscuro, sin catálogo de temas. Preferencia local; seguir `prefers-color-scheme` antes de elegirla. No agregar catálogo de componentes, iconografía ornamental ni tokens avanzados. Los criterios accesibles de `02` prevalecen sobre las decisiones de color.
+
+Piezas Cburnett SVG y Newsreader se distribuyen localmente; fuentes y licencias en [créditos](../frontend/public/assets/CREDITS.txt). Las casillas conservan su nombre accesible; las imágenes son decorativas para evitar anuncios duplicados. Los SVG sustituyen glifos dependientes de la fuente del sistema.

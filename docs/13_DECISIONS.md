@@ -98,6 +98,21 @@ Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. 
 - Descartado: coordinación multi-tab y difusión de snapshots a sockets duplicados.
 - Consecuencia: pestaña sustituida muestra aviso y no reintenta; la cookie permite que la pestaña más nueva recupere la partida.
 
+### ADR-016 — Tema claro y oscuro local
+
+- Estado: aceptada durante iteración visual, 2026-10-15.
+- Decisión: ofrecer solo dos temas; usar `prefers-color-scheme` mientras no haya elección y guardar la elección en `localStorage` como `ajedrez_theme`.
+- Razón: mejorar comodidad y personalidad visual sin añadir una dependencia ni datos de usuario.
+- Consecuencia: el ajuste es local a cada navegador; solo almacena el nombre del tema.
+
+### ADR-017 — Dirección editorial y recursos visuales locales
+
+- Estado: aceptada por la petición de pulido premium, 2026-10-15.
+- Decisión: tablero en marco común con jugadores, estado lateral en escritorio y anterior al tablero en móvil; menú de modos y tipografía Newsreader local. Sustituir Unicode por los doce SVG Cburnett.
+- Razón: corregir composición de panel administrativo y variación de piezas, reforzando reconocimiento de juego sin añadir librerías de interfaz.
+- Recursos: Cburnett de Lichess bajo GPL-2.0-or-later según su registro de licencias; Newsreader bajo SIL OFL 1.1. Se incluyen fuentes vectoriales sin modificar, licencias completas y atribución en `frontend/public/assets/CREDITS.txt`.
+- Consecuencia: recursos disponibles en LAN sin CDN; las piezas siguen siendo presentación del snapshot autoritativo, sin lógica de reglas añadida.
+
 ## Propuestas para revisión humana
 
 Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fase 2; ADR-004, 006 y 007 para Fase 4; ADR-005 y ADR-008 para Fase 3; ADR-009 para Fase 7; ADR-013 y ADR-015 para Fase 6.

@@ -1,0 +1,25 @@
+AJEDREZ — CREDITOS VISUALES
+
+PIEZAS SVG
+Conjunto Cburnett, por Colin M. L. Burnett (Cburnett).
+Archivos: pieces/wK.svg, wQ.svg, wR.svg, wB.svg, wN.svg, wP.svg,
+pieces/bK.svg, bQ.svg, bR.svg, bB.svg, bN.svg, bP.svg.
+Fuente descargada el 2026-10-15:
+https://github.com/lichess-org/lila/tree/master/public/piece/cburnett
+Licencia: GNU General Public License, version 2 o posterior (GPL-2.0-or-later),
+segun la atribucion del repositorio fuente:
+https://github.com/lichess-org/lila/blob/master/COPYING.md
+Texto completo incluido en pieces/GPL-2.0.txt.
+Los SVG son el codigo fuente vectorial y se redistribuyen sin modificar.
+Autor: https://en.wikipedia.org/wiki/User:Cburnett
+La composicion de interfaz es propia de este proyecto; no se copiaron
+pantallas, estilos ni marcas de Lichess.
+
+TIPOGRAFIA
+Newsreader, Copyright 2020 The Newsreader Project Authors.
+Fuente: https://github.com/google/fonts/tree/main/ofl/newsreader
+Proyecto: https://github.com/productiontype/Newsreader
+Licencia: SIL Open Font License 1.1. Texto completo en fonts/OFL.txt.
+Archivo fonts/Newsreader.ttf redistribuido sin modificar, descargado el 2026-10-15.
+
+Todos los recursos se sirven localmente. No se necesita un CDN para jugar.

@@ -1,6 +1,7 @@
 import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import GameScreen from './GameScreen.jsx';
+import Piece from './Piece.jsx';
 import './styles.css';
 
 function ServiceStatus({ health }) {
@@ -23,6 +24,12 @@ function ServiceStatus({ health }) {
 }
 
 function App() {
+  const [theme, setTheme] = useState(() => {
+    const saved = window.localStorage.getItem('ajedrez_theme');
+    return saved === 'light' || saved === 'dark'
+      ? saved
+      : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
   const [health, setHealth] = useState(null);
   const [session, setSession] = useState(null);
   const [currentRoom, setCurrentRoom] = useState(null);
@@ -47,12 +54,26 @@ function App() {
   const socketRef = useRef(null);
   const gameSubscriptionRef = useRef({ socket: null, id: null });
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  function toggleTheme() {
+    const next = theme === 'light' ? 'dark' : 'light';
+    window.localStorage.setItem('ajedrez_theme', next);
+    setTheme(next);
+  }
+
   function changeCurrentRoom(room) {
     currentRoomRef.current = room;
     setCurrentRoom(room);
   }
 
   function changeCurrentGame(game) {
+    const known = currentGameRef.current;
+    // HTTP can arrive after WebSocket has already confirmed the archive.
+    if (game && known?.id === game.id && known.revision === game.revision
+      && known.archiveStatus === 'saved' && game.archiveStatus === 'pending') return;
     currentGameRef.current = game;
     setCurrentGame(game);
   }
@@ -367,17 +388,36 @@ function App() {
   }[connection] ?? 'Conectando al lobby…';
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell${currentGame ? ' is-playing' : ''}`}>
       <header className="app-header">
-        <div><p className="eyebrow">Ajedrez para compartir</p><h1>Ajedrez UX</h1></div>
-        <ServiceStatus health={health} />
+        <div className="app-brand"><span className="brand-mark" aria-hidden="true"><Piece type="n" /></span><div><p className="eyebrow">El club · En red local</p><h1>Ajedrez</h1></div></div>
+        <div className="header-tools">
+          <button className="theme-toggle" type="button" aria-pressed={theme === 'dark'}
+            aria-label={`Cambiar a modo ${theme === 'light' ? 'oscuro' : 'claro'}`}
+            onClick={toggleTheme}>
+            <span className="theme-icon" aria-hidden="true">{theme === 'light' ? '◐' : '☼'}</span>
+            {theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
+          </button>
+        </div>
       </header>
 
       {sessionStatus === 'loading' && <p className="notice" role="status">Comprobando tu sesión…</p>}
 
       {sessionStatus === 'ready' && !session && (
+        <div className="entry-layout">
+          <section className="entry-intro" aria-labelledby="club-title">
+            <p className="eyebrow">64 casillas. Infinitas posibilidades.</p>
+            <h2 id="club-title">Una buena partida<br /><em>empieza contigo.</em></h2>
+            <p>Comparte el tablero con alguien de tu red o encuentra tu ritmo frente al bot.</p>
+            <div className="club-art" aria-hidden="true">
+              <div className="art-board" />
+              <Piece type="k" color="black" className="art-king" />
+              <Piece type="n" className="art-knight" />
+              <span className="art-caption">El juego empieza con una decisión.</span>
+            </div>
+          </section>
         <section className="entry-card" aria-labelledby="entry-title">
-          <p className="eyebrow">Bienvenido</p>
+          <p className="eyebrow">Toma asiento</p>
           <h2 id="entry-title">¿Cómo quieres llamarte?</h2>
           <p className="description">Usaremos este nombre durante tu sesión de juego.</p>
           <form onSubmit={enter} noValidate>
@@ -391,24 +431,25 @@ function App() {
             </button>
           </form>
         </section>
+        </div>
       )}
 
       {sessionStatus === 'ready' && session && !currentRoom && !currentGame && (
         <div className="lobby-layout">
           <section className="welcome-panel" aria-labelledby="welcome-title">
-            <p className="eyebrow">Lobby</p>
+            <p className="eyebrow">Tu próxima jugada</p>
             <h2 id="welcome-title">Hola, {session.name}</h2>
             <p className="description">Crea una sala o únete a alguien que esté esperando.</p>
             {roomMessage && <p className="success-message" role="status">{roomMessage}</p>}
-            <div className="actions">
-              <button className="primary-button" type="button" disabled={Boolean(roomAction)} onClick={(event) => {
+            <div className="mode-actions">
+              <button className="mode-card mode-human" type="button" aria-label="Crear sala" disabled={Boolean(roomAction)} onClick={(event) => {
                 createOpenerRef.current = event.currentTarget;
                 setRoomName(`Sala de ${session.name}`);
                 setRoomError('');
                 setCreateOpen(true);
-              }}>Crear sala</button>
-              <button className="secondary-button" type="button" disabled={Boolean(roomAction)} onClick={startBotGame}>
-                {roomAction === 'bot' ? 'Iniciando…' : 'Jugar contra bot'}
+              }}><span className="mode-copy"><span className="mode-kicker">Entre personas · LAN</span><strong>Crear sala</strong><span>Invita a alguien a tu mesa.</span></span><span className="mode-icon"><Piece type="k" /></span><span className="mode-arrow" aria-hidden="true">↗</span></button>
+              <button className="mode-card mode-bot" type="button" aria-label={roomAction === 'bot' ? 'Iniciando…' : 'Jugar contra bot'} disabled={Boolean(roomAction)} onClick={startBotGame}>
+                <span className="mode-copy"><span className="mode-kicker">Tú contra el sistema</span><strong>{roomAction === 'bot' ? 'Iniciando…' : 'Jugar contra bot'}</strong><span>Una partida a tu ritmo.</span></span><span className="mode-icon"><Piece type="n" color="black" /></span><span className="mode-arrow" aria-hidden="true">↗</span>
               </button>
             </div>
             {roomError && <p className="form-error" role="alert">{roomError}</p>}
@@ -425,7 +466,7 @@ function App() {
               <button className="secondary-button" type="button" onClick={() => setRoomsRetry((value) => value + 1)}>Intentar de nuevo</button>
             </div>}
             {roomsStatus === 'ready' && rooms.length === 0 && <div className="empty-state">
-              <span className="empty-mark" aria-hidden="true">♟</span><h3>Aún no hay salas</h3>
+              <span className="empty-mark" aria-hidden="true"><Piece type="p" /><Piece type="p" color="black" /></span><h3>Aún no hay salas</h3>
               <p>Cuando alguien cree una sala, aparecerá aquí. También puedes crear una para empezar.</p>
               <button className="secondary-button" type="button" disabled={Boolean(roomAction)} onClick={(event) => {
                 createOpenerRef.current = event.currentTarget;
@@ -436,7 +477,8 @@ function App() {
             </div>}
             {roomsStatus === 'ready' && rooms.length > 0 && <ul className="room-list">
               {rooms.map((room) => <li className="room-card" key={room.id}>
-                <div><h3>{room.name}</h3><p>Anfitrión: {room.hostName}</p><p>{room.players} / 2 jugadores · Esperando jugador</p></div>
+                <span className="room-card-mark" aria-hidden="true"><Piece type="k" color="black" /></span>
+                <div className="room-card-copy"><h3>{room.name}</h3><p>Anfitrión: {room.hostName}</p><p className="room-availability"><span className="occupancy">{room.players} / 2</span> Esperando jugador</p></div>
                 <button className="primary-button" type="button" disabled={Boolean(roomAction)} onClick={() => roomRequest(
                   `/api/rooms/${encodeURIComponent(room.id)}/join`, { method: 'POST' }, 'join', 'Te uniste a la sala.',
                 )}>{roomAction === 'join' ? 'Uniéndote…' : 'Unirse'}</button>
@@ -468,7 +510,8 @@ function App() {
 
       {sessionStatus === 'ready' && session && currentRoom && !(currentRoom.gameId && currentGame?.id === currentRoom.gameId) && (
         <section className="room-view" aria-labelledby="room-title">
-          <p className="eyebrow">Sala</p>
+          <div className="waiting-emblem" aria-hidden="true"><Piece type="k" /></div>
+          <p className="eyebrow">Tu mesa está preparada</p>
           <h2 id="room-title">{currentRoom.name}</h2>
           <p className="connection-status" role="status">{currentRoom.connection?.status === 'disconnected'
             ? 'Conexión perdida. Intentando recuperar esta sala…'
@@ -481,10 +524,10 @@ function App() {
                   : currentRoom.status === 'waiting' ? 'Esperando jugador' : 'Sala lista'}</p>
           <h3>Jugadores</h3>
           <ol className="player-list">
-            <li><strong>{currentRoom.hostName}</strong><span>Anfitrión · Blancas</span></li>
+            <li><span className="slot-piece" aria-hidden="true"><Piece type="k" /></span><div><strong>{currentRoom.hostName}</strong><span>Anfitrión · Blancas</span></div></li>
             {currentRoom.guestName
               ? <li><strong>{currentRoom.guestName}</strong><span>Invitado · Negras</span></li>
-              : <li className="player-slot"><strong>Esperando otro jugador…</strong><span>Plaza 2 de 2</span></li>}
+              : <li className="player-slot"><span className="slot-piece" aria-hidden="true">+</span><div><strong>Esperando otro jugador…</strong><span>Plaza 2 de 2</span></div></li>}
           </ol>
           {currentRoom.status === 'ready' && <p className="description">La partida está lista. Cargando el tablero…</p>}
           {roomMessage && <p className="success-message" role="status">{roomMessage}</p>}
@@ -519,6 +562,13 @@ function App() {
       </dialog>}
 
       {health?.backend === 'unavailable' && <p className="service-error" role="alert">No se puede contactar al backend. Comprueba que los servicios estén iniciados e inténtalo de nuevo.</p>}
+      <footer className="app-footer">
+        <span>Un tablero. Una buena compañía.</span>
+        <div className="footer-tools">
+          <details className="service-diagnostics"><summary>{health?.backend === 'available' && health?.database === 'available' ? 'Servicios disponibles' : 'Estado de servicios'}</summary><ServiceStatus health={health} /></details>
+          <a href="/assets/CREDITS.txt" target="_blank" rel="noreferrer">Créditos visuales</a>
+        </div>
+      </footer>
       {health?.database === 'unavailable' && <p className="service-error" role="alert">El backend responde, pero PostgreSQL no está disponible.</p>}
     </main>
   );

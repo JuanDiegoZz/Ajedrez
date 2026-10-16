@@ -1,4 +1,4 @@
-# Árbol vigente — Fase 7
+# Árbol vigente
 
 Estructura de producto verificada el 2026-10-15. Se omiten `node_modules`, `dist` y datos locales generados.
 
@@ -41,9 +41,14 @@ ajedrez/
 │   ├── package.json
 │   ├── package-lock.json
 │   ├── vite.config.js
+│   ├── public/assets/
+│   │   ├── CREDITS.txt
+│   │   ├── fonts/ (Newsreader.ttf, OFL.txt)
+│   │   └── pieces/ (12 SVG Cburnett, GPL-2.0.txt)
 │   └── src/
 │       ├── main.jsx
 │       ├── GameScreen.jsx
+│       ├── Piece.jsx
 │       └── styles.css
 ├── docs/
 │   ├── 00_VISION.md … 14_PROGRESS.md

@@ -39,6 +39,10 @@ Usar “Tu turno · Blancas”, “Turno de Ana · Negras”, “Esperando jugad
 
 Por cada mejora relevante registrar: necesidad o hipótesis → diseño → tarea de prueba → observación → cambio → reevaluación. Usar identificadores de requisitos de `04`, participantes anónimos y versión evaluada. El registro se mantiene en `14`; el protocolo está en `11`.
 
+## Tema visual
+
+La interfaz ofrece modo claro y oscuro con contraste equivalente. Si no hay preferencia guardada, sigue `prefers-color-scheme`; el control visible permite cambiarlo. `localStorage` conserva solo `ajedrez_theme`, nunca identidad ni datos de partida.
+
 ## Referencias consultadas
 
 - [W3C: contraste mínimo](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).

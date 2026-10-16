@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import Piece from './Piece.jsx';
 
-const symbols = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
 const names = { k: 'rey', q: 'dama', r: 'torre', b: 'alfil', n: 'caballo', p: 'peón' };
 const promotions = [
   { code: 'q', name: 'Dama' }, { code: 'r', name: 'Torre' },
@@ -44,7 +44,7 @@ function MoveHistory({ history }) {
     turns.push({ number: index / 2 + 1, white: history[index], black: history[index + 1] });
   }
   return <ol className="move-history" aria-label="Historial de movimientos">
-    {turns.map((turn) => <li key={turn.number}><span>{turn.number}.</span> {turn.white} {turn.black ?? ''}</li>)}
+    {turns.map((turn) => <li key={turn.number}><span>{turn.number}.</span><strong>{turn.white}</strong><strong>{turn.black ?? '—'}</strong></li>)}
   </ol>;
 }
 
@@ -269,14 +269,17 @@ export default function GameScreen({ game, room, session, connection, onGameChan
 
   return <section className="game-screen" aria-labelledby="game-title">
     <header className="game-heading">
-      <div><p className="eyebrow">{game.mode === 'bot' ? 'Partida · Contra bot' : `Partida · ${room.name}`}</p><h2 id="game-title">Ajedrez</h2></div>
+      <div><p className="eyebrow">Mesa de juego · {game.mode === 'bot' ? 'Contra bot' : 'Multijugador'}</p><h2 id="game-title">{game.mode === 'bot' ? 'Frente al bot' : room.name}</h2></div>
       <p className={`connection-status ${connected ? 'connected' : 'disconnected'}`} role="status">{connectionText}</p>
     </header>
+    <div className="game-layout">
+    <section className="game-status" aria-label="Estado de la partida" data-your-turn={myTurn && game.status === 'playing'}>
+    <p className="eyebrow">{game.status === 'playing' ? 'Sobre el tablero' : 'Resultado'}</p>
     {game.status === 'playing' && rivalDisconnected && <p className="presence-banner" role="status">
       {topPlayer.name} perdió la conexión. Esperando reconexión…
     </p>}
-    <p className={`turn-indicator${game.check && game.status === 'playing' ? ' in-check' : ''}`} role="status" aria-live="polite">{game.check && game.status === 'playing' ? '⚠ ' : ''}{turnLabel}</p>
-    {game.mode === 'bot' && game.status === 'playing' && game.botThinking && <p className="presence-banner" role="status" aria-live="polite">El bot está pensando…</p>}
+    {game.status === 'playing' && <p className={`turn-indicator${game.check ? ' in-check' : ''}`} role="status" aria-live="polite">{game.check ? '⚠ ' : ''}{turnLabel}</p>}
+    {game.mode === 'bot' && game.status === 'playing' && game.botThinking && <p className="presence-banner bot-thinking" role="status" aria-live="polite"><span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>El bot está pensando…</p>}
     {game.mode === 'bot' && game.status === 'playing' && game.botError && <div className="presence-banner" role="alert">
       <p>El bot no pudo elegir una jugada.</p>
       <button className="secondary-button" type="button" disabled={busy} onClick={() => void retryBot()}>{busy ? 'Reintentando…' : 'Reintentar'}</button>
@@ -295,8 +298,9 @@ export default function GameScreen({ game, room, session, connection, onGameChan
       <button className="secondary-button" type="button" disabled={returning} onClick={returnToLobby}>{returning ? 'Volviendo…' : 'Volver al lobby'}</button>
     </section>}
     {game.check && checkedKing && <p className="check-message" role="status">⚠ El rey de {game.turn === 'white' ? 'las blancas' : 'las negras'} está en jaque, en {checkedKing}.</p>}
-    <p className="game-message" role={message && /cambió|no se pudo|no está permitido|perdió|error/iu.test(message) ? 'alert' : 'status'} aria-live="polite">{message}</p>
-    <div className="game-layout">
+    <p className="game-message" role={message && /cambió|no se pudo|no está permitido|perdió|error/iu.test(message) ? 'alert' : 'status'} aria-live="polite">{game.status === 'finished' && message === resultText(game) ? '' : message}</p>
+    <div className="your-color"><span className={`color-token ${myColor}`} aria-hidden="true" /><div><strong>Juegas con {myColor === 'white' ? 'blancas' : 'negras'}</strong><span>{session.name}</span></div></div>
+    </section>
       <div className="board-column">
         <PlayerCard player={topPlayer} color={otherColor} label={game.mode === 'bot' ? 'Bot · Negras' : otherColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === otherColor} />
         <p className="sr-only" id="board-help">Usa las flechas para explorar casillas. Pulsa Enter o espacio para seleccionar. Escape cancela la selección.</p>
@@ -343,15 +347,16 @@ export default function GameScreen({ game, room, session, connection, onGameChan
               {targetMoves.length > 0 && <span className="move-marker" aria-hidden="true" />}
               {piece && <span className={`piece-symbol ${pieceColor}`} aria-hidden="true" style={animation || rookAnimation ? {
                 '--from-x': (animation || rookAnimation).x, '--from-y': (animation || rookAnimation).y,
-              } : undefined}>{symbols[piece.toLowerCase()]}</span>}
+              } : undefined}><Piece type={piece} color={pieceColor} /></span>}
             </button>;
           })}
         </div>
         <PlayerCard player={bottomPlayer} color={myColor} label={game.mode === 'bot' ? 'Tú · Blancas' : myColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === myColor} isYou />
       </div>
       <aside className="game-side-panel" aria-label="Información de la partida">
-        <div className="your-color"><strong>Juegas con {myColor === 'white' ? 'blancas' : 'negras'}</strong><span>· {session.name}</span></div>
+        <p className="eyebrow">Jugada a jugada</p>
         <h3>Movimientos</h3>
+        <div className="history-labels" aria-hidden="true"><span>#</span><span>Blancas</span><span>Negras</span></div>
         {game.history.length ? <MoveHistory history={game.history} /> : <p>Aún no hay movimientos.</p>}
         {game.lastMove && <p className="last-move-label">Último movimiento: {game.lastMove.san} ({game.lastMove.from} a {game.lastMove.to})</p>}
         {game.status === 'playing' && <button className="secondary-button resign-button" type="button" disabled={busy} onClick={() => setResignOpen(true)}>Abandonar partida</button>}
@@ -364,7 +369,7 @@ export default function GameScreen({ game, room, session, connection, onGameChan
         <p>El peón llegará a {promotion.to}.</p>
         <div className="promotion-options">
           {promotions.map((option) => <button className="secondary-button" key={option.code} type="button" aria-label={option.name} disabled={busy}
-            onClick={() => void submitMove(promotion.to, option.code)}>{option.name}</button>)}
+            onClick={() => void submitMove(promotion.to, option.code)}><Piece type={option.code} color={myColor} />{option.name}</button>)}
         </div>
         <button className="dialog-cancel" type="button" disabled={busy} onClick={() => setPromotion(null)}>Cancelar</button>
       </>}
@@ -384,7 +389,7 @@ export default function GameScreen({ game, room, session, connection, onGameChan
 
 function PlayerCard({ player, color, label, active, isYou = false }) {
   return <div className={`game-player${active ? ' active-player' : ''}`}>
-    <span className={`color-piece ${color}`} aria-hidden="true">{color === 'white' ? '♔' : '♚'}</span>
+    <span className={`color-piece ${color}`} aria-hidden="true"><Piece type="k" color={color} /></span>
     <div><strong>{player.name}{isYou ? ' (tú)' : ''}</strong><span>{label}</span></div>
     {active && <strong className="player-turn">{isYou ? 'TU TURNO' : 'TURNO'}</strong>}
   </div>;
