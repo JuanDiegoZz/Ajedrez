@@ -2,7 +2,7 @@
 
 ## Estado actual — Fase 8 — 2026-10-15
 
-**Fase 8: NO COMPLETADA.** Auditoría técnica/heurística y candidata B verificadas; el estudio con estudiantes y su comparación A/B siguen pendientes. No se atribuyen resultados a usuarios.
+**Fase 8: COMPLETADA — 2026-10-15.** Cierre aceptado con auditoría heurística, iteraciones visuales y regresión técnica documentadas. La evaluación comparativa con estudiantes no se realizó y queda como limitación metodológica, no como fallo del software.
 
 - Versión A congelada por referencia al checkpoint limpio `cb61d64` (Fase 7). Playwright inspeccionó entrada, lobby, diálogo, espera, partida humana A/B, bot, abandono, reconexión y teclado antes de cambiar código.
 - Prioridad: P1 marcadores de movimiento/captura (2.21:1/2.68:1 sobre casilla oscura) y foco del diálogo “Crear sala” (caía en `body`); P2 coordenadas visuales (3.29:1). No se observó P0.
@@ -13,11 +13,13 @@
 - Viewports: entrada, lobby, modal, espera, tablero y resultado no desbordan en 1440/1024/768/390/320 px. En 320 px, botones 45 px y casilla de 34 px. Con `prefers-reduced-motion: reduce`, la pieza no anima (`animation-name: none`).
 - El log agregado de Playwright conserva ocho errores HTTP/WebSocket de contextos anteriores cuando Compose reinició; las rutas felices post-reinicio en contextos nuevos no registraron errores. No hubo warnings.
 - Preparación de estudiantes en `11`: se añadió T9 de interpretación de desconexión. No se han reclutado ni probado estudiantes; eficacia, eficiencia, satisfacción y comparación de versiones carecen de resultados reales. Tampoco se hizo revisión manual con lector de pantalla.
-- Pendiente para cerrar Fase 8 según roadmap: probar versión B con unos cinco estudiantes, registrar datos anónimos y comparar tareas equivalentes con A; documentar hallazgos y límites sin generalizar la muestra.
+- No se realizó una evaluación comparativa formal con aproximadamente cinco participantes. Por tanto, no se presentan métricas humanas cuantitativas de eficacia, eficiencia o satisfacción posteriores al rediseño. No se inventan usuarios, resultados, tiempos ni puntuaciones.
+- Evidencia técnica de cierre y relación hallazgo → cambio → comprobación: ver las iteraciones visual complementaria y premium abajo. La regresión cubrió entrada, lobby, salas, juego humano A/B, bot, recuperación, archivo, claro/oscuro, teclado, movimiento reducido y tamaños responsive.
+- El protocolo de tareas, registro y preguntas sigue disponible en `11_TESTING_AND_UX_EVALUATION.md` para posible evaluación posterior. La falta del estudio formal se acepta como limitación metodológica de esta fase.
 
 ## Iteración visual premium — 2026-10-15
 
-- **Iteración completada técnicamente.** Se preservó el trabajo visual previo y la lógica existente. Fase 8 continúa pendiente de evaluación humana; esta iteración no aporta resultados de estudiantes ni inicia otra fase.
+- Iteración completada técnicamente. Se preservó el trabajo visual previo y la lógica existente; no se atribuyen resultados a estudiantes.
 - Auditoría previa en navegador: entrada con composición genérica; lobby con tarjetas equivalentes a un dashboard; cabecera con diagnósticos demasiado prominentes; tablero comenzando aproximadamente a 374 px; jugadores e historial con poca jerarquía; glifos dependientes de la plataforma. Se inspeccionaron también resultado, bot, recuperación y ambos temas.
 - Cambios: identidad editorial de club con marfil/tinta/latón, fuente Newsreader local, bienvenida con composición ajedrecística, acciones de lobby como modos de juego y tarjetas de sala con ocupación. Diagnósticos conservados en un desplegable del pie. Tablero enmarcado y dominante, jugadores con medallones, estado e historial en panel complementario; en escritorio el tablero comienza aproximadamente a 259 px.
 - Piezas: doce SVG Cburnett sin modificar, obtenidos del repositorio oficial de Lichess y distribuidos bajo GPL-2.0-or-later. Se incluyen fuente SVG, licencia completa y atribución. Newsreader conserva OFL-1.1. Recursos y créditos locales en `frontend/public/assets/`; no se requiere CDN. ADR-017 registra la decisión y sus licencias.
@@ -40,7 +42,7 @@
 - Responsive final: entrada, lobby, diálogo, espera, partida y resultado sin overflow a 1440/1024/768/390/320 px; banner de desconexión sin overflow a 320 px. Tablero: 624/624/480/349/279 px; en 320 px, casillas de 35 px. Preferencia oscura por sistema y elección persistida comprobadas; foco del diálogo regresa al activador.
 - Contraste medido en navegador: texto principal 12.37:1 claro y 14.75:1 oscuro; control de tema 14.09:1; coordenada sobre casilla oscura 4.65:1 en ambos temas. Los marcadores de captura se distinguen por anillo y contorno.
 - Revalidación: build Vite/Compose correcta; `backend npm test` 57/57; `/api/health` 200 con backend/PostgreSQL disponibles; DB healthy, `docker compose config --quiet` y `git diff --check` correctos.
-- Esta es auditoría visual/heurística y verificación técnica; no es resultado del estudio con estudiantes. Fase 8 sigue pendiente de evaluación humana comparativa, como se registra arriba.
+- Esta es auditoría visual/heurística y verificación técnica; no es resultado del estudio con estudiantes. La limitación metodológica y el cierre aceptado se registran al inicio de este documento.
 
 ## Estado histórico — Fase 7 — 2026-10-15
 

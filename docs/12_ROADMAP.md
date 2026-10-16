@@ -18,7 +18,7 @@ La progresión integra reglas con tablero y accesibilidad desde su primera apari
 | 5 — Tablero integrado | Primer flujo completo humano: selección, destinos, capturas, promoción, historial, animación y resultado | Dos navegadores juegan y abandonan; servidor valida; teclado, foco, orientación y movimiento reducido; E2E de flujo principal | `02`, `03`, `06`, `11` |
 | 6 — Recuperación | Heartbeat, gracia, snapshot, pestaña reemplazada y fallos de guardado | Corte temporal y definitivo de red; sin jugadas duplicadas; caída/reinicio con mensajes honestos; ensayo LAN | `05`, `08`, `09` |
 | 7 — Bot | Modo privado con estrategia acotada y misma UX | Legalidad, defensa inmediata, mate en uno, presupuesto, lobby sin bloqueo y cancelación tardía | `10`, `11` |
-| 8 — Evaluación e iteración | Congelar versión A, prueba con unos cinco estudiantes, mejoras B y comparación | Datos anónimos, hallazgos vinculados a cambios, repetir tareas y declarar límites; corregir problemas serios | `02`, `11`, `14` |
+| 8 — Evaluación e iteración — **COMPLETADA** | Auditoría heurística, iteraciones visuales A/B y regresión técnica | Hallazgos vinculados a cambios y verificaciones documentados en `14`. La evaluación comparativa formal con aproximadamente cinco estudiantes no se realizó; queda aceptada como limitación metodológica, sin métricas humanas inventadas | `02`, `11`, `14` |
 | 9 — Cierre y demo | Revisión final, instrucciones y evidencia | Cumplir checklist inferior, ensayo de arranque y partida humana/bot en LAN; revisión académica | README, setup, `14` |
 
 Cada fase deja un entregable comprobable. Fases 3–4 no se presentan como aplicación completa. Si una fase resulta demasiado grande al planificar código, dividir dentro de su responsabilidad, sin abrir la siguiente ni añadir funciones.
@@ -40,7 +40,7 @@ Cada fase deja un entregable comprobable. Fases 3–4 no se presentan como aplic
 - [ ] Duplicados, carreras, reconexión, pérdida de sesión y fallos de archivo tienen comportamiento comprobado.
 - [ ] Partida finalizada y movimientos se conservan en PostgreSQL tras reinicio; partidas activas no se prometen recuperables.
 - [ ] Teclado, foco, contraste real, etiquetas, movimiento reducido y ancho 320 px se revisan manualmente y con navegador.
-- [ ] Evaluación con aproximadamente cinco estudiantes y al menos una mejora reevaluada, con datos reales y límites.
+- [x] Evaluación heurística, mejoras iteradas y verificación documentadas. La evaluación comparativa con aproximadamente cinco estudiantes no se realizó y se registra como limitación metodológica aceptada; el protocolo de `11` queda disponible para posible trabajo posterior.
 - [ ] Metas UX alcanzadas o desviaciones expresamente aceptadas y justificadas; sin problemas bloqueantes o serios sin resolver.
 - [ ] Arranque desde copia limpia e instrucciones LAN reproducibles; sin secretos versionados.
 - [ ] Decisiones, árbol real, instrucciones y evidencia actualizados; sin dependencias o funciones fuera de alcance.
