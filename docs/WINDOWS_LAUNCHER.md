@@ -1,6 +1,21 @@
 # Launcher local de Windows
 
-Launcher local para Windows 10 22H2 (build 19045) o Windows 11 23H2+ (build 22631+). No cambia la aplicación ni sus servicios. Los archivos `.bat` localizan su propia carpeta y delegan en PowerShell 5.1 con `-NoProfile -ExecutionPolicy Bypass`; la política global de PowerShell no cambia. La lógica común vive en `scripts/windows/common.ps1`.
+Launcher local para Windows 10 22H2 (build 19045) o Windows 11 23H2+ (build 22631+). No cambia la aplicación ni sus servicios. `AJEDREZ.bat` es la entrada recomendada: abre `scripts/windows/menu.ps1`, que muestra el menú y llama a los scripts especializados en procesos PowerShell hijos dentro de la misma consola. Así, el `exit` de cada operación no cierra el menú. Los `.bat` individuales siguen funcionando por separado. Los wrappers localizan su propia carpeta y usan PowerShell 5.1 con `-NoProfile -ExecutionPolicy Bypass`; la política global no cambia. La lógica común vive en `scripts/windows/common.ps1`.
+
+## Menú principal
+
+Haz doble clic en `AJEDREZ.bat` y elige:
+
+| Opción | Acción |
+|---|---|
+| `1` | Jugar / Iniciar mediante `start.ps1`. |
+| `2` | Ver diagnóstico mediante `status.ps1`; un código distinto de cero se muestra, pero no cierra el menú. |
+| `3` | Reiniciar / Reparar mediante `reset.ps1`, conservando sus confirmaciones. |
+| `4` | Detener mediante `stop.ps1`, sin borrar datos. |
+| `5` | Desinstalar mediante `uninstall.ps1`, conservando sus opciones y confirmaciones. |
+| `0` | Salir. Salir del menú no detiene Ajedrez. |
+
+También puedes ejecutar directamente `START_AJEDREZ.bat`, `STATUS_AJEDREZ.bat`, `RESET_AJEDREZ.bat`, `STOP_AJEDREZ.bat` o `UNINSTALL_AJEDREZ.bat`.
 
 ## Requisitos
 
@@ -17,6 +32,7 @@ Docker Desktop puede requerir WSL2, virtualización de hardware, habilitación d
 
 | Comando | Comportamiento |
 |---|---|
+| `AJEDREZ.bat` | Abre el menú principal para iniciar, consultar, reparar, detener o desinstalar. Salir del menú no detiene servicios. |
 | `START_AJEDREZ.bat` | Comprueba Windows, CLI, Compose, Engine, `docker compose config`, conflicto TCP 8080, binding `0.0.0.0:8080` y salud de PostgreSQL, `SELECT 1`, `/api/health` y frontend. Ejecuta `docker compose up -d --build` y espera hasta 150 s por salud. Si ya está sano, no reconstruye ni abre otra pestaña. |
 | `STOP_AJEDREZ.bat` | Ejecuta `docker compose stop`; no borra contenedores ni volumen. Repetirlo es seguro. |
 | `STATUS_AJEDREZ.bat` | Solo consulta el estado y genera log local. Código de salida `0` significa servicios sanos; valor distinto de cero indica Docker ausente o aplicación no sana/detenida. |

@@ -6,6 +6,7 @@ Estructura de producto verificada el 2026-10-15. Se omiten `node_modules`, `dist
 ajedrez/
 ├── AGENTS.md
 ├── README.md
+├── AJEDREZ.bat
 ├── START_AJEDREZ.bat
 ├── STOP_AJEDREZ.bat
 ├── STATUS_AJEDREZ.bat
@@ -67,6 +68,7 @@ ajedrez/
 │   └── windows/
 │       ├── common.ps1
 │       ├── firewall.ps1
+│       ├── menu.ps1
 │       ├── start.ps1
 │       ├── stop.ps1
 │       ├── status.ps1

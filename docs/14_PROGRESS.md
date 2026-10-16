@@ -10,6 +10,15 @@
 - El host de prueba ya tenía Docker funcionando; no se probó instalación winget ni activación de Docker Desktop detenido. No se ejecutó uninstall destructivo. Un test con stdin redirigido creó una regla temporal por cómo el host leyó la confirmación; se revirtió esa regla exacta y se añadió una guarda para que entradas no interactivas nunca modifiquen firewall. No quedan reglas del launcher ni se tocaron reglas ajenas. La robustez de ruta con espacios se revisó en las comillas de wrappers y `-LiteralPath`; el directorio real de prueba no contiene espacios.
 - Sin cambios en frontend, backend, juego, bot, WebSocket ni esquema de datos. Launcher y logs locales `.launcher/` están excluidos por `.gitignore`.
 
+## Menú principal del launcher Windows — 2026-10-15
+
+- Se añadió `AJEDREZ.bat` como entrada recomendada y `scripts/windows/menu.ps1` como menú interactivo. El menú delega las cinco acciones a los scripts existentes, sin duplicar lógica; cada acción corre en un proceso PowerShell hijo sin ventana nueva para conservar el código de salida y mantener abierto el menú.
+- README, guía del launcher y árbol del proyecto documentan el nuevo acceso. Los BAT individuales siguen siendo independientes. Salir del menú no detiene contenedores.
+- Validado con Windows PowerShell `5.1.26100.9711`: parser sin errores; `AJEDREZ.bat` abrió desde raíz y desde `C:\Windows`; wrapper y proceso hijo resolvieron una ruta de prueba con espacios.
+- Flujo comprobado: menú inició desde stack detenido, volvió al menú, mostró diagnóstico activo, detuvo sin borrar volumen, mantuvo el menú después de STATUS detenido (código 1), volvió a iniciar y salir dejó servicios activos. Entradas `7`, vacía y `hola` mostraron error y permitieron continuar.
+- RESET desde menú y BAT individual terminaron bien; volumen `ajedrez_postgres-data` conservó el mismo nombre. Los cinco BAT individuales se ejecutaron: START/STATUS/STOP/RESET correctos; UNINSTALL se probó hasta su guarda no interactiva, que canceló con código 1 antes de modificar recursos. Opción 5 del menú delegó a esa misma protección; no se ejecutó uninstall destructivo ni se probaron prompts interactivos de desinstalación.
+- Docker Compose quedó saludable al final: PostgreSQL healthy, `/api/health` HTTP 200, puerto `0.0.0.0:8080`. `git diff --check` pasó; no hubo cambios en frontend, backend ni Compose.
+
 ## Estado actual — Fase 9 — 2026-10-15
 
 **Fase 9: COMPLETADA — 2026-10-15.** Regresión final, arranque reproducible, documentación de demo, defensa UX y plan de contingencia preparados. No se agregaron funciones ni cambios de lógica.

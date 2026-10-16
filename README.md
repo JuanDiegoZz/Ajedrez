@@ -6,14 +6,16 @@ Aplicación universitaria de ajedrez para 2–5 personas en una red local de con
 
 Requiere Windows 10 22H2 (build 19045) o Windows 11 23H2+ (build 22631+) y Docker Desktop con Docker Compose v2. Si Docker Desktop falta, el launcher puede ofrecer instalar el paquete oficial `Docker.DockerDesktop` mediante winget. La instalación puede pedir UAC y requerir WSL2, virtualización o reiniciar Windows; el launcher no activa esas funciones ni reinicia el equipo. Node.js, npm, PostgreSQL y Nginx no se instalan en el host.
 
-1. Descarga y extrae el ZIP de GitHub, o clona el repositorio y abre su carpeta.
-2. Haz doble clic en `START_AJEDREZ.bat`.
-3. Espera la comprobación de Docker y los servicios. El navegador se abrirá cuando Ajedrez esté listo.
+1. Descarga y extrae el ZIP de GitHub, o clona el repositorio.
+2. Haz doble clic en `AJEDREZ.bat`.
+3. Selecciona `Jugar / Iniciar` y espera la comprobación de Docker y los servicios. El navegador se abrirá cuando Ajedrez esté listo.
 
 La consola muestra `http://localhost:8080` y las IPv4 LAN privadas detectadas. Permitir TCP 8080 en Windows Firewall es opcional, requiere confirmación explícita y se limita al perfil privado/subred local.
 
 | Archivo | Acción |
 |---|---|
+| `AJEDREZ.bat` | Abre el menú principal para iniciar, revisar, reparar, detener o desinstalar. Salir del menú no detiene servicios. |
+| `START_AJEDREZ.bat` | Inicia Ajedrez directamente. |
 | `STOP_AJEDREZ.bat` | Detiene servicios y conserva datos. |
 | `STATUS_AJEDREZ.bat` | Diagnostica Docker, puerto, salud, contenedores, LAN y firewall. |
 | `RESET_AJEDREZ.bat` | Reconstruye servicios tras confirmar `REINICIAR`; conserva PostgreSQL. |
