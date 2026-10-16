@@ -6,6 +6,11 @@ Estructura de producto verificada el 2026-10-15. Se omiten `node_modules`, `dist
 ajedrez/
 ├── AGENTS.md
 ├── README.md
+├── START_AJEDREZ.bat
+├── STOP_AJEDREZ.bat
+├── STATUS_AJEDREZ.bat
+├── RESET_AJEDREZ.bat
+├── UNINSTALL_AJEDREZ.bat
 ├── MODEL_STRATEGY.md
 ├── PROJECT_TREE.md
 ├── .env.example
@@ -52,11 +57,21 @@ ajedrez/
 │       └── styles.css
 ├── docs/
 │   ├── 00_VISION.md … 15_FINAL_DEMO.md
+│   ├── WINDOWS_LAUNCHER.md
 │   └── superpowers/plans/
 │       ├── 2026-10-15-fase-1-arranque-lan.md
 │       ├── 2026-10-15-fase-2-entrada-lobby.md
 │       └── 2026-10-15-fase-3-salas-inicio.md
 ├── prompts/
+├── scripts/
+│   └── windows/
+│       ├── common.ps1
+│       ├── firewall.ps1
+│       ├── start.ps1
+│       ├── stop.ps1
+│       ├── status.ps1
+│       ├── reset.ps1
+│       └── uninstall.ps1
 ├── setup/
 └── .codex/
 ```

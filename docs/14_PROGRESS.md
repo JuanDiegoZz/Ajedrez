@@ -1,5 +1,15 @@
 ﻿# 14 — Progreso, auditoría y evidencia
 
+## Launcher Windows — 2026-10-15
+
+- Se añadieron wrappers `.bat` para iniciar, detener, diagnosticar, reparar sin borrar datos y desinstalar recursos Compose de Ajedrez. La lógica usa PowerShell local, ruta basada en `$PSScriptRoot` y bypass limitado a cada ejecución.
+- `START` verifica Windows, Docker CLI/Compose/Engine, configuración, puerto, binding exacto `0.0.0.0:8080` y salud; ofrece Docker Desktop mediante winget solo con confirmación. Salud incluye contenedor PostgreSQL, `SELECT 1`, `/api/health` y frontend. Expone URL local e IPv4 LAN detectadas.
+- Firewall permanece intacto sin confirmación. La regla opcional queda limitada a `Private`/`LocalSubnet` y solo su creador puede quitarla.
+- `STOP` no borra; `RESET` requiere `REINICIAR` y conserva el volumen; uninstall separa conservación de datos y borrado completo, que exige escribir `ELIMINAR`.
+- Verificación real: `STATUS` activo/inactivo; `START` desde stack detenido y repetido sobre stack sano; `STOP`; `RESET` con marca de creación de volumen PostgreSQL idéntica antes/después; colisión TCP 8080 simulada con listener PowerShell que siguió aceptando conexiones; uninstall opción 1 conservó volumen; BAT invocados desde `C:\Windows`; Compose quedó levantado y sano tras pruebas.
+- El host de prueba ya tenía Docker funcionando; no se probó instalación winget ni activación de Docker Desktop detenido. No se ejecutó uninstall destructivo. Un test con stdin redirigido creó una regla temporal por cómo el host leyó la confirmación; se revirtió esa regla exacta y se añadió una guarda para que entradas no interactivas nunca modifiquen firewall. No quedan reglas del launcher ni se tocaron reglas ajenas. La robustez de ruta con espacios se revisó en las comillas de wrappers y `-LiteralPath`; el directorio real de prueba no contiene espacios.
+- Sin cambios en frontend, backend, juego, bot, WebSocket ni esquema de datos. Launcher y logs locales `.launcher/` están excluidos por `.gitignore`.
+
 ## Estado actual — Fase 9 — 2026-10-15
 
 **Fase 9: COMPLETADA — 2026-10-15.** Regresión final, arranque reproducible, documentación de demo, defensa UX y plan de contingencia preparados. No se agregaron funciones ni cambios de lógica.

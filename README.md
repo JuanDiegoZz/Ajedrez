@@ -2,7 +2,26 @@
 
 Aplicación universitaria de ajedrez para 2–5 personas en una red local de confianza. Ofrece partidas humanas y contra bot mediante React, Node.js, PostgreSQL, Nginx y Docker Compose.
 
-## Arranque
+## Inicio rápido en Windows
+
+Requiere Windows 10 22H2 (build 19045) o Windows 11 23H2+ (build 22631+) y Docker Desktop con Docker Compose v2. Si Docker Desktop falta, el launcher puede ofrecer instalar el paquete oficial `Docker.DockerDesktop` mediante winget. La instalación puede pedir UAC y requerir WSL2, virtualización o reiniciar Windows; el launcher no activa esas funciones ni reinicia el equipo. Node.js, npm, PostgreSQL y Nginx no se instalan en el host.
+
+1. Descarga y extrae el ZIP de GitHub, o clona el repositorio y abre su carpeta.
+2. Haz doble clic en `START_AJEDREZ.bat`.
+3. Espera la comprobación de Docker y los servicios. El navegador se abrirá cuando Ajedrez esté listo.
+
+La consola muestra `http://localhost:8080` y las IPv4 LAN privadas detectadas. Permitir TCP 8080 en Windows Firewall es opcional, requiere confirmación explícita y se limita al perfil privado/subred local.
+
+| Archivo | Acción |
+|---|---|
+| `STOP_AJEDREZ.bat` | Detiene servicios y conserva datos. |
+| `STATUS_AJEDREZ.bat` | Diagnostica Docker, puerto, salud, contenedores, LAN y firewall. |
+| `RESET_AJEDREZ.bat` | Reconstruye servicios tras confirmar `REINICIAR`; conserva PostgreSQL. |
+| `UNINSTALL_AJEDREZ.bat` | Ofrece conservar datos o borrar recursos y volumen con confirmación `ELIMINAR`. |
+
+El desinstalador no quita Docker Desktop ni borra esta carpeta. Detalles, seguridad y límites en [launcher Windows](docs/WINDOWS_LAUNCHER.md).
+
+## Arranque manual (alternativa)
 
 Requiere Docker Desktop iniciado, Docker Compose v2 y un navegador moderno. No hace falta instalar Node.js ni PostgreSQL en el equipo anfitrión para ejecutar la aplicación con Compose. Se requiere acceso a Internet la primera vez que se descargan imágenes y paquetes durante la compilación.
 
