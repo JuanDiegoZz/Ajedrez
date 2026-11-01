@@ -73,6 +73,38 @@ test('starts one authoritative game when a second session joins a room', async (
   assert.equal(invalidSession.status, 401);
 });
 
+test('creates a selected time control for rooms and bot games; rejects unknown presets', async (t) => {
+  const base = await start(t);
+  const host = await enter(base, 'Timed Host');
+  const guest = await enter(base, 'Timed Guest');
+  const created = await fetch(base + '/api/rooms', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: host.cookie },
+    body: JSON.stringify({ name: 'Sala cronometrada', timeControl: '10+5' }),
+  });
+  assert.equal(created.status, 201);
+  const room = (await created.json()).room;
+  assert.equal(room.timeControl, '10+5');
+  const joined = await fetch(base + '/api/rooms/' + room.id + '/join', { method: 'POST', headers: { Cookie: guest.cookie } });
+  const game = (await joined.json()).game;
+  assert.equal(game.timeControl, '10+5');
+  assert.ok(game.clock.whiteMs <= 600_000 && game.clock.whiteMs > 599_000);
+  assert.ok(game.clock.blackMs <= 600_000 && game.clock.blackMs > 599_000);
+
+  const bot = await enter(base, 'Timed Bot');
+  const createdBot = await fetch(base + '/api/games/bot', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: bot.cookie },
+    body: JSON.stringify({ timeControl: '3+0' }),
+  });
+  assert.equal((await createdBot.json()).game.timeControl, '3+0');
+  const invalid = await enter(base, 'Invalid Preset');
+  const rejected = await fetch(base + '/api/games/bot', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: invalid.cookie },
+    body: JSON.stringify({ timeControl: '2+1' }),
+  });
+  assert.equal(rejected.status, 400);
+  assert.equal((await rejected.json()).error.code, 'INVALID_TIME_CONTROL');
+});
+
 test('starts a private bot game and recovers it through the existing session', async (t) => {
   const base = await start(t);
   const human = await enter(base, 'Bot Player');

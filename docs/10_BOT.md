@@ -49,3 +49,7 @@ Resultado lleva gameId y revisión de origen. Antes de aplicarlo, servidor compr
 En 20 posiciones distintas reproducidas por trabajador (9 apertura, 5 medio juego, 6 final): tiempo total mínimo/mediana/máximo por grupo 52.7/83.9/153.5 ms, 43.8/58.7/77.1 ms y 40.8/51.1/72.9 ms. Ninguna alcanzó límites ni necesitó fallback. En tres posiciones de referencia, búsqueda local: apertura 47.5 ms, medio juego 98.9 ms y táctica 27.7 ms. Son mediciones de esta máquina, no garantía para otro hardware.
 
 Referencia de reglas: [chess.js](https://github.com/jhlywa/chess.js), consultada mediante Context7 el 2026-10-15. La biblioteca no incluye IA.
+
+## Iteración 2 — reloj compartido
+
+El bot usa el mismo deadline y transición de jugada que jugador humano. Su búsqueda consume el saldo negro. Pausa o timeout cancela/invalida el worker; resultado con revisión vieja no mueve tablero. Tras reconexión humana, el servidor vuelve a pedir cálculo si el turno negro sigue activo. No cambia minimax ni dificultad.

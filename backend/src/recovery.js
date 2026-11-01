@@ -5,6 +5,7 @@ export function createRecoveryManager({
   onDisconnect = () => {},
   onReconnect = () => {},
   onExpire = () => {},
+  graceForSession = () => graceMs,
 } = {}) {
   const pending = new Map();
 
@@ -12,24 +13,31 @@ export function createRecoveryManager({
     const existing = pending.get(sessionId);
     if (existing) return existing.deadline;
 
-    const deadline = Date.now() + graceMs;
+    const allowance = Math.max(0, Math.min(graceMs, graceForSession(sessionId)));
+    const deadline = Date.now() + allowance;
     const timer = setTimeout(() => {
       if (pending.get(sessionId)?.timer !== timer) return;
       pending.delete(sessionId);
       onExpire(sessionId, deadline);
-    }, graceMs);
+    }, allowance);
     timer.unref?.();
-    pending.set(sessionId, { deadline, timer });
-    onDisconnect(sessionId, deadline);
+    pending.set(sessionId, { deadline, timer, allowance });
+    onDisconnect(sessionId, deadline, allowance);
     return deadline;
   }
 
   function reconnect(sessionId) {
     const entry = pending.get(sessionId);
     if (!entry) return false;
+    if (Date.now() >= entry.deadline) {
+      clearTimeout(entry.timer);
+      pending.delete(sessionId);
+      onExpire(sessionId, entry.deadline);
+      return false;
+    }
     clearTimeout(entry.timer);
     pending.delete(sessionId);
-    onReconnect(sessionId, entry.deadline);
+    onReconnect(sessionId, entry.deadline, Math.max(0, entry.allowance - Math.max(0, entry.deadline - Date.now())));
     return true;
   }
 

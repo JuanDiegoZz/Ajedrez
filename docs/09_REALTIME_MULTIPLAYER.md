@@ -69,7 +69,19 @@ Crear/unir/cancelar salas e iniciar bot son HTTP; no duplicarlos como comandos W
 - Sala esperando: reservar anfitrión durante los mismos 60 s, ocultarla del lobby mientras esté desconectado; al vencer eliminarla. Restablecerla si vuelve a tiempo.
 - Reinicio servidor: sesión no existe; informar “El servidor se reinició o tu sesión terminó; la partida no puede recuperarse”. No aplicar plazos a un juego inexistente.
 
-Pruebas de Fase 6: suite backend con grace reducido, Playwright con dos contextos y caída real del WebSocket desde el navegador, y archivo timeout contra PostgreSQL. No se hizo un corte físico de Wi-Fi/LAN. No se implementan relojes competitivos, recuperación durable, espectadores ni sockets distribuidos.
+Pruebas previas de Fase 6 usaron gracia reducida en backend y una caída WebSocket simulada en navegador; no se hizo corte físico de Wi-Fi/LAN. Iteración 2 añade reloj solo en memoria; recuperación durable, espectadores y sockets distribuidos siguen fuera de alcance.
+
+## Iteración 2 — estado de reloj y snapshots
+
+Las partidas nuevas reciben `timeControl` en la creación HTTP de sala o bot (`3+0`, `5+0`, `10+5`, `unlimited`). Ausencia del campo mantiene compatibilidad como `unlimited`. El snapshot `game:state` conserva `revision` para posiciones y agrega `stateVersion` para reloj, presencia y archivo. `clock` contiene `whiteMs`, `blackMs`, `runningColor`, `phase` y `sampledAt` monotónico del servidor; la fase distingue `running`, `paused` y `finished`. No hay mensajes por segundo. Un snapshot nuevo con igual `stateVersion` y `sampledAt` mayor refresca reloj tras reconectar o volver a la pestaña.
+
+Node calcula el resultado con deadlines monotónicos. El cliente interpola desde la recepción con `performance.now()` y nunca declara timeout local. Al reconectar o volver a una pestaña visible, pide snapshot vigente. `stateVersion` evita que HTTP antiguo reemplace una actualización WebSocket nueva; `revision` mantiene compatibilidad para comandos de movimiento.
+
+Una desconexión detectada pausa ambos relojes de partidas cronometradas. Cada jugador conserva un presupuesto acumulado máximo de 60 s; reconexiones sucesivas consumen ese saldo y no lo restauran. El reemplazo de socket no marca desconexión si el socket anterior ya fue sustituido. Al reanudar, solo se activa el reloj del turno vigente. Partidas sin reloj conservan la recuperación anterior.
+
+El bot consume su reloj mientras calcula. Timeout o desconexión invalida/cancela el worker; una respuesta tardía falla la revisión y no se aplica. Al volver el jugador, el bot reanuda cálculo cuando le corresponde.
+
+Los movimientos nuevos incluyen en el snapshot metadatos obtenidos del objeto verbose de chess.js: pieza, color, SAN, captura, pieza capturada, promoción, jaque, mate y enroque. El archivo PostgreSQL conserva la forma histórica de movimientos. PGN se genera desde el historial validado y se descarga solo para partidas terminadas.
 
 ## Errores esperados
 

@@ -69,3 +69,14 @@ La triple repetición y los 50 movimientos se resuelven automáticamente para si
 | RF-052 | Volver al lobby libera pertenencia activa; no restaura la sala terminada como disponible. |
 | RF-053 | Nueva partida sigue política de `03`; no promete revancha automática. |
 | RF-054 | Guardar registro terminado y movimientos en PostgreSQL, una vez; fallo de guardado se comunica sin cambiar resultado ni impedir salir. |
+
+## Iteración 2 — control de tiempo
+
+| ID | Comportamiento y aceptación |
+|---|---|
+| RF-060 | Al crear sala o partida bot, elegir 3+0, 5+0, 10+5 o sin reloj; la interfaz propone 5+0. Solicitudes antiguas sin control siguen sin reloj. |
+| RF-061 | Servidor autoritativo descuenta solo reloj activo con tiempo monotónico; suma incremento de 5 s después de una jugada legal 10+5. |
+| RF-062 | Vencimiento finaliza una sola vez; tablas si el ganador carece de material aproximado para dar mate. La política no cubre toda excepción FIDE 6.9. |
+| RF-063 | Desconexión pausa reloj cronometrado y consume un presupuesto acumulado de hasta 60 s por jugador. Reemplazo de socket no genera desconexión falsa. |
+| RF-064 | Snapshots sincronizan control, saldos, turno y fase sin ticks por segundo; el cliente anima localmente y no decide el resultado. |
+| RF-065 | Mostrar historial con pieza SVG, color, SAN y capturas; presentar motivo, control y saldos al terminar. Permitir descargar PGN de partida finalizada. |

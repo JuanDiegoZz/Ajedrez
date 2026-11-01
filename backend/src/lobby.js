@@ -1,5 +1,5 @@
 import WebSocket, { WebSocketServer } from 'ws';
-import { expireDisconnectedPlayer, getGame, getGameForSession, markGameDisconnected, reconnectGamePlayer } from './games.js';
+import { expireDisconnectedPlayer, getGame, getGameForSession, getGameRecoveryGrace, markGameDisconnected, reconnectGamePlayer } from './games.js';
 import { expireDisconnectedHost, getRoomForSession, listRooms, markRoomDisconnected, reconnectRoomHost } from './rooms.js';
 import { createRecoveryManager, reconnectGraceMs } from './recovery.js';
 import { getSession } from './sessions.js';
@@ -31,17 +31,18 @@ export function attachLobby(server, {
 
   const recovery = createRecoveryManager({
     graceMs,
-    onDisconnect(sessionId, deadline) {
+    graceForSession(sessionId) { return getGameRecoveryGrace(sessionId, graceMs); },
+    onDisconnect(sessionId, deadline, allowance) {
       const session = { id: sessionId };
       const room = getRoomForSession(session);
       if (room?.gameId) {
-        const game = markGameDisconnected(sessionId, room.gameId, deadline);
+        const game = markGameDisconnected(sessionId, room.gameId, deadline, allowance);
         if (game) broadcastGame(game);
       } else if (room?.status === 'waiting') {
         markRoomDisconnected(sessionId, deadline);
       } else {
         const botGame = getGameForSession(sessionId);
-        const game = botGame && markGameDisconnected(sessionId, botGame.id, deadline);
+        const game = botGame && markGameDisconnected(sessionId, botGame.id, deadline, allowance);
         if (game) {
           onGameDisconnected(game);
           broadcastGame(game);

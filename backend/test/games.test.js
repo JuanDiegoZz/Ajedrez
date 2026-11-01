@@ -7,6 +7,8 @@ import {
   getArchiveRecord,
   getGame,
   getGameForSession,
+  getGamePgn,
+  getGameRecoveryGrace,
   getLegalMoves,
   markGameDisconnected,
   makeMove,
@@ -29,6 +31,22 @@ function fixture(fen) {
 
 const play = (game, session, from, to, promotion) => makeMove(session, game.id, { from, to, promotion });
 
+function clockHarness() {
+  let now = 0;
+  const timers = new Map();
+  let nextId = 0;
+  return {
+    options: {
+      now: () => now,
+      schedule(callback, delay) { const id = ++nextId; timers.set(id, { callback, deadline: now + delay }); return id; },
+      cancel(id) { timers.delete(id); },
+    },
+    advance(ms) { now += ms; },
+    fireNext() { const [id, timer] = timers.entries().next().value ?? []; if (timer) { timers.delete(id); timer.callback(); } },
+    timers,
+  };
+}
+
 test('creates a public initial game with host as white and guest as black', () => {
   const game = fixture();
   assert.equal(game.status, 'playing');
@@ -37,6 +55,160 @@ test('creates a public initial game with host as white and guest as black', () =
   assert.deepEqual(game.white, { name: 'Alex' });
   assert.deepEqual(game.black, { name: 'Sam' });
   assert.equal(JSON.stringify(game).includes('session'), false);
+});
+
+test('validates presets, charges only active player, increments legal moves once, and leaves illegal retries unchanged', () => {
+  const clock = clockHarness();
+  const game = createBotGame('timed-human', 'Alex', { timeControl: '10+5', clock: clock.options });
+  assert.equal(game.timeControl, '10+5');
+  assert.equal(game.clock.whiteMs, 600_000);
+  assert.throws(() => createBotGame('invalid-time-player', 'Alex', { timeControl: '1+1' }), /Invalid time control/u);
+  clock.advance(9_000);
+  assert.throws(() => makeMove('timed-human', game.id, { from: 'e2', to: 'e5' }), { code: 'ILLEGAL_MOVE' });
+  assert.equal(getGame('timed-human', game.id).clock.whiteMs, 591_000);
+  const request = { from: 'e2', to: 'e4', requestId: 'timed-e4', expectedRevision: 0 };
+  const moved = makeMove('timed-human', game.id, request);
+  assert.equal(moved.clock.whiteMs, 596_000);
+  assert.equal(moved.clock.blackMs, 600_000);
+  assert.equal(moved.clock.runningColor, 'black');
+  clock.advance(3_000);
+  assert.equal(makeMove('timed-human', game.id, request).clock.whiteMs, 596_000);
+  assert.equal(getGame('timed-human', game.id).clock.blackMs, 597_000);
+});
+
+test('exact deadline loses before a move, autonomous timeout finishes once, and freezes both clocks', () => {
+  const clock = clockHarness();
+  const game = createGame({
+    id: `timed-room-${Math.random()}`, hostSessionId: 'timed-white', hostName: 'Alex',
+    guestSessionId: 'timed-black', guestName: 'Sam', timeControl: '3+0',
+  }, undefined, { clock: clock.options });
+  clock.advance(180_000);
+  assert.throws(() => makeMove('timed-white', game.id, { from: 'e2', to: 'e4' }), { code: 'GAME_NOT_ACTIVE' });
+  const finished = getGame('timed-white', game.id);
+  assert.equal(finished.result.reason, 'timeout');
+  assert.equal(finished.result.winner, 'black');
+  assert.equal(finished.clock.whiteMs, 0);
+  assert.equal(finished.clock.blackMs, 180_000);
+  assert.throws(() => makeMove('timed-black', game.id, { from: 'e7', to: 'e5' }), { code: 'GAME_NOT_ACTIVE' });
+  assert.equal(getArchiveRecord(game.id).whiteRemainingMs, 0);
+});
+
+test('a late capture cannot change material used to decide timeout', () => {
+  const clock = clockHarness();
+  const initialFen = 'r3k3/8/8/8/8/8/8/R3K3 w - - 0 1';
+  const game = createGame({
+    id: 'late-capture-timeout-room', hostSessionId: 'late-capture-white', hostName: 'Alex',
+    guestSessionId: 'late-capture-black', guestName: 'Sam', timeControl: '3+0',
+  }, initialFen, { clock: clock.options });
+
+  clock.advance(180_000);
+  assert.throws(() => makeMove('late-capture-white', game.id, { from: 'a1', to: 'a8' }), { code: 'GAME_NOT_ACTIVE' });
+
+  const finished = getGame('late-capture-white', game.id);
+  assert.deepEqual(finished.result, { winner: 'black', reason: 'timeout' });
+  assert.equal(finished.fen, initialFen);
+  assert.equal(finished.history.length, 0);
+});
+
+test('a checkmating move at expiry loses to timeout, and resignation at expiry cannot replace it', () => {
+  const clock = clockHarness();
+  const game = createGame({
+    id: 'late-mate-room-' + Math.random(), hostSessionId: 'late-mate-white', hostName: 'Alex',
+    guestSessionId: 'late-mate-black', guestName: 'Sam', timeControl: '3+0',
+  }, undefined, { clock: clock.options });
+  for (const [session, from, to] of [
+    ['late-mate-white', 'f2', 'f3'], ['late-mate-black', 'e7', 'e5'], ['late-mate-white', 'g2', 'g4'],
+  ]) makeMove(session, game.id, { from, to });
+  clock.advance(180_000);
+  assert.throws(() => makeMove('late-mate-black', game.id, { from: 'd8', to: 'h4' }), { code: 'GAME_NOT_ACTIVE' });
+  assert.throws(() => resignGame('late-mate-black', game.id), { code: 'GAME_NOT_ACTIVE' });
+  assert.equal(getGame('late-mate-white', game.id).result.reason, 'timeout');
+  assert.equal(getGame('late-mate-white', game.id).result.winner, 'white');
+  assert.equal(getGame('late-mate-white', game.id).history.length, 3);
+});
+
+test('a bot result returned after its clock expires is discarded', () => {
+  const clock = clockHarness();
+  const game = createBotGame('late-bot-human', 'Alex', { timeControl: '3+0', clock: clock.options });
+  makeMove('late-bot-human', game.id, { from: 'e2', to: 'e4' });
+  clock.advance(180_000);
+  assert.equal(applyBotMove(game.id, 1, { from: 'e7', to: 'e5' }), null);
+  assert.equal(getGame('late-bot-human', game.id).result.reason, 'timeout');
+  assert.equal(getGame('late-bot-human', game.id).history.length, 1);
+});
+
+test('promotion selection time keeps running and legal promotion records structured move metadata', () => {
+  const clock = clockHarness();
+  const game = createGame({
+    id: `promotion-room-${Math.random()}`, hostSessionId: 'promo-white', hostName: 'Alex',
+    guestSessionId: 'promo-black', guestName: 'Sam', timeControl: '10+5',
+  }, '7k/P7/8/8/8/8/8/7K w - - 0 1', { clock: clock.options });
+  clock.advance(4_000);
+  assert.throws(() => makeMove('promo-white', game.id, { from: 'a7', to: 'a8' }), { code: 'PROMOTION_REQUIRED' });
+  assert.equal(getGame('promo-white', game.id).clock.whiteMs, 596_000);
+  const moved = makeMove('promo-white', game.id, { from: 'a7', to: 'a8', promotion: 'q' });
+  assert.equal(moved.moves[0].piece, 'p');
+  assert.equal(moved.moves[0].promotion, 'q');
+  assert.equal(moved.moves[0].color, 'white');
+  assert.equal(moved.clock.whiteMs, 601_000);
+});
+
+test('recovery pauses timed clocks and spends one cumulative 60-second budget', () => {
+  const clock = clockHarness();
+  const game = createGame({
+    id: `recovery-clock-room-${Math.random()}`, hostSessionId: 'clock-recover-white', hostName: 'Alex',
+    guestSessionId: 'clock-recover-black', guestName: 'Sam', timeControl: '3+0',
+  }, undefined, { clock: clock.options });
+  clock.advance(2_000);
+  const before = getGame('clock-recover-white', game.id).clock.whiteMs;
+  markGameDisconnected('clock-recover-white', game.id, Date.now() + 60_000, 60_000);
+  clock.advance(12_000);
+  assert.equal(getGame('clock-recover-white', game.id).clock.whiteMs, before);
+  reconnectGamePlayer('clock-recover-white', game.id);
+  assert.equal(getGameRecoveryGrace('clock-recover-white'), 48_000);
+  markGameDisconnected('clock-recover-white', game.id, Date.now() + 48_000, 48_000);
+  clock.advance(20_000);
+  reconnectGamePlayer('clock-recover-white', game.id);
+  assert.equal(getGameRecoveryGrace('clock-recover-white'), 28_000);
+});
+
+test('checkmate and resignation freeze timed clocks and timeout cannot replace result', () => {
+  const clock = clockHarness();
+  const game = createGame({
+    id: `mate-room-${Math.random()}`, hostSessionId: 'mate-white', hostName: 'Alex',
+    guestSessionId: 'mate-black', guestName: 'Sam', timeControl: '3+0',
+  }, undefined, { clock: clock.options });
+  for (const [session, from, to] of [
+    ['mate-white', 'f2', 'f3'], ['mate-black', 'e7', 'e5'], ['mate-white', 'g2', 'g4'], ['mate-black', 'd8', 'h4'],
+  ]) makeMove(session, game.id, { from, to });
+  const frozen = getGame('mate-white', game.id).clock.whiteMs;
+  clock.advance(400_000);
+  clock.fireNext();
+  assert.equal(getGame('mate-white', game.id).result.reason, 'checkmate');
+  assert.equal(getGame('mate-white', game.id).clock.whiteMs, frozen);
+});
+
+test('unlimited games stay clockless and old move history remains SAN', () => {
+  const game = createBotGame('unlimited-player', 'Alex');
+  assert.equal(game.timeControl, 'unlimited');
+  assert.equal(game.clock, null);
+  const moved = makeMove('unlimited-player', game.id, { from: 'e2', to: 'e4' });
+  assert.deepEqual(moved.history, ['e4']);
+  assert.equal(moved.moves[0].san, 'e4');
+});
+
+test('finished games export PGN with result, time control, names, and termination', () => {
+  const game = createBotGame('pgn-player', 'Alex', { timeControl: '5+0' });
+  makeMove('pgn-player', game.id, { from: 'e2', to: 'e4' });
+  resignGame('pgn-player', game.id);
+  const pgn = getGamePgn('pgn-player', game.id);
+  assert.match(pgn, /\[White "Alex"\]/u);
+  assert.match(pgn, /\[Black "Bot"\]/u);
+  assert.match(pgn, /\[TimeControl "300\+0"\]/u);
+  assert.match(pgn, /\[Termination "resignation"\]/u);
+  assert.match(pgn, /1\. e4 0-1/u);
+  const active = createBotGame('pgn-active', 'Sam');
+  assert.throws(() => getGamePgn('pgn-active', active.id), { code: 'GAME_NOT_FINISHED' });
 });
 
 test('creates a private bot game and applies only a revision-matched bot move', () => {
@@ -131,6 +303,10 @@ test('accepts captures and records the last move without exposing engine state',
   const capture = play(game, 'host-session', 'e4', 'd5');
   assert.equal(capture.lastMove.san, 'exd5');
   assert.equal(capture.lastMove.captured, 'p');
+  assert.deepEqual(capture.moves[2], {
+    from: 'e4', to: 'd5', san: 'exd5', piece: 'p', color: 'white',
+    capture: true, check: false, mate: false, castling: false, captured: 'p',
+  });
   capture.white.name = 'forged';
   assert.equal(getGame('host-session', game.id).white.name, 'Alex');
 });
@@ -145,6 +321,7 @@ test('allows legal castling and rejects castling through occupied squares', () =
   ]) play(game, session, from, to);
   const result = play(game, 'host-session', 'e1', 'g1');
   assert.equal(result.lastMove.san, 'O-O');
+  assert.equal(result.moves.at(-1).castling, true);
 });
 
 test('supports promotion and rejects invalid promotion symbols', () => {
@@ -152,6 +329,7 @@ test('supports promotion and rejects invalid promotion symbols', () => {
   assert.throws(() => play(game, 'host-session', 'a7', 'a8', 'king'), { code: 'INVALID_PROMOTION' });
   const promoted = play(game, 'host-session', 'a7', 'a8', 'q');
   assert.equal(promoted.lastMove.promotion, 'q');
+  assert.deepEqual([promoted.moves[0].piece, promoted.moves[0].color, promoted.moves[0].promotion], ['p', 'white', 'q']);
   assert.equal(promoted.fen.split(' ')[0][0], 'Q');
 });
 
@@ -164,6 +342,7 @@ test('supports en passant through the rules engine', () => {
   const capture = play(game, 'host-session', 'e5', 'd6');
   assert.equal(capture.lastMove.san, 'exd6');
   assert.equal(capture.lastMove.captured, 'p');
+  assert.deepEqual([capture.moves.at(-1).capture, capture.moves.at(-1).captured, capture.moves.at(-1).color], [true, 'p', 'white']);
 });
 
 test('detects checkmate, reports the winner, and blocks later moves', () => {
@@ -176,6 +355,7 @@ test('detects checkmate, reports the winner, and blocks later moves', () => {
   assert.equal(finished.status, 'finished');
   assert.equal(finished.check, true);
   assert.deepEqual(finished.result, { winner: 'black', reason: 'checkmate' });
+  assert.deepEqual([finished.moves.at(-1).check, finished.moves.at(-1).mate, finished.moves.at(-1).color], [true, true, 'black']);
   assert.throws(() => play(game, 'host-session', 'e2', 'e4'), { code: 'GAME_NOT_ACTIVE' });
 });
 

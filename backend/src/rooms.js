@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { normalizeTimeControl } from './game-clock.js';
 
 const rooms = new Map();
 const roomBySession = new Map();
@@ -28,6 +29,7 @@ function publicRoom(room) {
     hostName: room.hostName,
     guestName: room.guestName,
     status: room.status,
+    timeControl: room.timeControl,
     gameId: room.gameId,
     players: room.guestSessionId ? 2 : 1,
     connection: room.hostDisconnectedUntil ? { status: 'disconnected', reconnectUntil: room.hostDisconnectedUntil } : { status: 'connected' },
@@ -41,7 +43,7 @@ function activeRoom(session) {
   return id ? rooms.get(id) ?? null : null;
 }
 
-export function createRoom(session, value) {
+export function createRoom(session, value, requestedTimeControl) {
   const validation = validateRoomName(value);
   if (validation.code) throw new RoomError(validation.code, validation.message, 400);
   const existing = activeRoom(session);
@@ -50,6 +52,10 @@ export function createRoom(session, value) {
     throw new RoomError('SESSION_IN_ROOM', 'Ya estás en una sala. Sal antes de crear otra.');
   }
 
+  let timeControl;
+  try { timeControl = normalizeTimeControl(requestedTimeControl).id; }
+  catch { throw new RoomError('INVALID_TIME_CONTROL', 'Elige un control de tiempo disponible.', 400); }
+
   const room = {
     id: randomUUID(),
     name: validation.name,
@@ -57,6 +63,7 @@ export function createRoom(session, value) {
     hostName: session.name,
     guestSessionId: null,
     guestName: null,
+    timeControl,
     status: 'waiting',
     gameId: null,
     finishedDepartures: new Set(),
@@ -111,6 +118,7 @@ export function getRoomGameData(id) {
     hostName: room.hostName,
     guestSessionId: room.guestSessionId,
     guestName: room.guestName,
+    timeControl: room.timeControl,
   };
 }
 

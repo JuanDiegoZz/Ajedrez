@@ -23,6 +23,7 @@ test('creates an opaque waiting room owned by its session and lists it', () => {
   assert.match(room.id, /^[\da-f-]{36}$/);
   assert.equal(room.hostName, 'Ana');
   assert.equal(room.status, 'waiting');
+  assert.equal(room.timeControl, 'unlimited');
   assert.deepEqual(listRooms().filter(({ id }) => id === room.id), [room]);
   assert.deepEqual(getRoomForSession(host), room);
 });

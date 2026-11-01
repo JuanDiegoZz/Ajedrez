@@ -222,6 +222,21 @@ input { width: 100%; min-height: 50px; padding: .7rem .85rem; color: var(--ink);
 .promotion-options button { display: flex; flex-direction: column; align-items: center; gap: .5rem; background: var(--surface-muted); }
 .promotion-options .chess-piece { width: 3.5rem; height: 3.5rem; }
 .dialog-cancel { width: 100%; margin-top: .8rem; }
+.time-control-field { max-width: 24rem; margin: 0 0 1.1rem; }
+select { width: 100%; min-height: 48px; padding: .65rem .8rem; color: var(--ink); background: var(--surface); border: 1px solid var(--muted); border-radius: .35rem; font: inherit; }
+select:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.player-clock { flex: 0 0 auto; min-width: 5.5rem; padding: .48rem .6rem; color: #f3f0e7; background: #14242b; border: 1px solid #64737a; border-radius: .3rem; font: 700 1.15rem/1 ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; text-align: center; }
+.player-clock.clock-active { border-color: #e5c681; box-shadow: 0 0 0 2px rgb(229 198 129 / 22%); }
+.player-clock.clock-urgent { color: #fff3ed; background: #762f2d; border-color: #ffaaa0; animation: clock-urgent 900ms ease-in-out infinite alternate; }
+.clock-paused-label { display: block; margin-top: .25rem; color: #eed49c; font: 600 .56rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .05em; text-transform: uppercase; }
+.captured-pieces { display: flex; min-height: 1.5rem; align-items: center; gap: .05rem; margin: -.4rem .7rem .55rem; color: var(--muted); font-size: .65rem; }
+.captured-pieces .chess-piece { width: 1.3rem; height: 1.3rem; margin-left: -.1rem; }
+.move-entry { display: inline-flex; min-width: 0; align-items: center; gap: .15rem; overflow: hidden; }
+.move-entry .chess-piece { flex: 0 0 1.25rem; width: 1.25rem; height: 1.25rem; }
+.move-entry > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pgn-link { display: block; margin-bottom: .5rem; text-align: center; text-decoration: none; }
+@keyframes clock-urgent { to { box-shadow: 0 0 0 3px rgb(255 170 160 / 28%); } }
+@media (prefers-reduced-motion: reduce) { .player-clock.clock-urgent { animation: none; } }
 @keyframes board-piece-arrive { from { transform: translate(var(--from-x), var(--from-y)); } to { transform: translate(0, 0); } }
 @keyframes dialog-arrive { from { opacity: 0; transform: translateY(.6rem) scale(.985); } to { opacity: 1; transform: none; } }
 @keyframes thinking { 50% { opacity: .35; transform: translateY(-3px); } }

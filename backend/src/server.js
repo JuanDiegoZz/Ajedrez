@@ -6,8 +6,8 @@ import { createSession, getSession, sessionTtlMs, validateName } from './session
 import { cancelRoom, createRoom, getRoomForSession, getRoomGameData, joinRoom, leaveRoom, listRooms, setRoomGame } from './rooms.js';
 import {
   applyBotMove, createBotGame, createGame, getArchiveRecord, getBotSearchInput, getGame,
-  getGameForSession, getLegalMoves, leaveBotGame, makeMove, markGameArchived,
-  retryBotTurn, resignGame, setBotSearchError,
+  getGameForSession, getGamePgn, getLegalMoves, leaveBotGame, makeMove, markGameArchived,
+  retryBotTurn, resignGame, setBotSearchError, setGameTimeoutHandler,
 } from './games.js';
 import { archiveFinishedGame, initializeGameArchive } from './game-archive.js';
 import { attachLobby } from './lobby.js';
@@ -241,7 +241,12 @@ const server = createServer(async (request, response) => {
       return;
     }
     const existing = getGameForSession(session.id);
-    const game = createBotGame(session.id, session.name);
+    let input = {};
+    try { if (request.headers['content-type']?.startsWith('application/json')) input = await readJson(request); }
+    catch (error) { sendJson(response, error.status ?? 400, { error: { code: 'INVALID_REQUEST', message: error.message } }); return; }
+    let game;
+    try { game = createBotGame(session.id, session.name, { timeControl: input.timeControl }); }
+    catch (error) { sendJson(response, error.status ?? 400, { error: { code: error.code ?? 'INVALID_TIME_CONTROL', message: error.message } }); return; }
     setSessionCookie(response, session.id);
     sendJson(response, existing?.status === 'playing' ? 200 : 201, { game });
     return;
@@ -258,6 +263,12 @@ const server = createServer(async (request, response) => {
     try {
       const gameId = decodeURIComponent(gameAction[1]);
       const action = gameAction[2];
+      if (request.method === 'GET' && action === undefined && new URL(request.url, 'http://localhost').searchParams.get('format') === 'pgn') {
+        const pgn = getGamePgn(session.id, gameId);
+        response.writeHead(200, { 'Content-Type': 'application/x-chess-pgn; charset=utf-8', 'Content-Disposition': `attachment; filename="ajedrez-${gameId}.pgn"`, 'Cache-Control': 'no-store' });
+        response.end(pgn);
+        return;
+      }
       if (request.method === 'GET' && !action) {
         sendJson(response, 200, { game: getGame(session.id, gameId) });
         return;
@@ -316,7 +327,7 @@ const server = createServer(async (request, response) => {
     try {
       const input = await readJson(request);
       const existingRoom = getRoomForSession(session);
-      const room = createRoom(session, input?.name);
+      const room = createRoom(session, input?.name, input?.timeControl);
       setSessionCookie(response, session.id);
       sendJson(response, existingRoom ? 200 : 201, { room });
       lobby.broadcast();
@@ -395,6 +406,12 @@ const lobby = attachLobby(server, {
   onGameFinished: archiveGame,
   onGameDisconnected(game) { if (game.mode === 'bot') cancelBotTurn(game.id); },
   onBotTurn(game) { if (game.mode === 'bot' && game.botThinking) queueBotTurn(game.id); },
+});
+
+setGameTimeoutHandler((gameId) => {
+  cancelBotTurn(gameId);
+  lobby.broadcastGame(gameId);
+  void archiveGame(gameId);
 });
 
 server.once('close', () => {
