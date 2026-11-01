@@ -86,3 +86,9 @@ Los movimientos nuevos incluyen en el snapshot metadatos obtenidos del objeto ve
 ## Errores esperados
 
 Sala no disponible, no participante, sesión expirada, turno incorrecto, revisión obsoleta, jugada ilegal, promoción incompleta, partida terminada, pausa de conexión y solicitud malformada. Ningún error modifica tablero; mensajes explican esperar, elegir otra jugada, resincronizar o volver al lobby según caso.
+
+## Iteración 3 — perfil y revocación
+
+Snapshots públicos de salas/jugadores incluyen avatar ID validado y nombre visible, nunca ID privado de sesión. `PATCH /api/session` emite `session:state` y estado de sala actualizado si anfitrión espera; partida activa conserva identidad congelada. `DELETE /api/session` revoca mapas/sockets, cancela recuperación y emite revocación a quien esté suscrito. Un cierre voluntario no inicia gracia de 60 s. Otras pestañas limpian la vista mediante BroadcastChannel; al reconectar, servidor rechaza sesión revocada.
+
+Las cookies nuevas llevan nombre aleatorio propio por sesión. Esta separación impide que un `Set-Cookie` atrasado de una identidad revocada sobrescriba la cookie de identidad nueva. Se sigue aceptando `ajedrez_session` heredada durante transición; parser WebSocket y HTTP comparten selección de sesión.

@@ -2,7 +2,17 @@ import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import GameScreen from './GameScreen.jsx';
 import Piece from './Piece.jsx';
+import ProfileDialog from './ProfileDialog.jsx';
+import LogoutDialog from './LogoutDialog.jsx';
+import { Avatar, AvatarPicker } from './Avatar.jsx';
 import './styles.css';
+
+function readCoordinatesPreference() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('ajedrez_preferences_v1') || '{}');
+    return typeof saved.coordinates === 'boolean' ? saved.coordinates : true;
+  } catch { return true; }
+}
 
 function ServiceStatus({ health }) {
   const backend = health?.backend === 'available' ? 'Disponible' : health ? 'No disponible' : 'Comprobando…';
@@ -25,7 +35,8 @@ function ServiceStatus({ health }) {
 
 function App() {
   const [theme, setTheme] = useState(() => {
-    const saved = window.localStorage.getItem('ajedrez_theme');
+    let saved;
+    try { saved = window.localStorage.getItem('ajedrez_theme'); } catch { saved = null; }
     return saved === 'light' || saved === 'dark'
       ? saved
       : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -37,6 +48,7 @@ function App() {
   const [sessionStatus, setSessionStatus] = useState('loading');
   const [sessionError, setSessionError] = useState('');
   const [name, setName] = useState('');
+  const [entryAvatar, setEntryAvatar] = useState('club');
   const [submitting, setSubmitting] = useState(false);
   const [rooms, setRooms] = useState([]);
   const [roomsStatus, setRoomsStatus] = useState('loading');
@@ -49,22 +61,125 @@ function App() {
   const [roomName, setRoomName] = useState('');
   const [roomTimeControl, setRoomTimeControl] = useState('5+0');
   const [botTimeControl, setBotTimeControl] = useState('5+0');
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
+  const [coordinates, setCoordinates] = useState(readCoordinatesPreference);
   const dialogRef = useRef(null);
+  const profileOpenerRef = useRef(null);
   const createOpenerRef = useRef(null);
   const currentRoomRef = useRef(null);
   const currentGameRef = useRef(null);
   const socketRef = useRef(null);
   const gameSubscriptionRef = useRef({ socket: null, id: null });
+  const sessionRef = useRef(session);
+  const identityEpochRef = useRef(0);
+  sessionRef.current = session;
+
+  function invalidateIdentity(message, clearName = true) {
+    identityEpochRef.current += 1;
+    setName(clearName ? '' : sessionRef.current?.name ?? '');
+    setEntryAvatar('club');
+    setSessionError(message);
+    currentRoomRef.current = null;
+    currentGameRef.current = null;
+    setSession(null);
+    setCurrentRoom(null);
+    setCurrentGame(null);
+    setRoomAction('');
+    setCreateOpen(false);
+    setProfileBusy(false);
+    setLogoutBusy(false);
+    setProfileOpen(false);
+    setLogoutConfirm(false);
+    setLogoutError('');
+    setSubmitting(false);
+    setSessionStatus('ready');
+  }
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+    return () => cancelAnimationFrame(frame);
+  }, [Boolean(session), currentRoom?.id, currentGame?.id]);
+
   function toggleTheme() {
     const next = theme === 'light' ? 'dark' : 'light';
-    window.localStorage.setItem('ajedrez_theme', next);
+    try { window.localStorage.setItem('ajedrez_theme', next); } catch { /* Theme remains available until reload. */ }
     setTheme(next);
   }
+
+  function setCoordinatePreference(value) {
+    setCoordinates(value);
+    try { localStorage.setItem('ajedrez_preferences_v1', JSON.stringify({ coordinates: value })); } catch { /* Preferences remain usable without storage. */ }
+  }
+
+  useEffect(() => {
+    function syncCoordinates(event) {
+      if (event.key === 'ajedrez_preferences_v1') setCoordinates(readCoordinatesPreference());
+      if (event.key === 'ajedrez_theme' && (event.newValue === 'light' || event.newValue === 'dark')) setTheme(event.newValue);
+    }
+    window.addEventListener('storage', syncCoordinates);
+    return () => window.removeEventListener('storage', syncCoordinates);
+  }, []);
+
+  async function saveProfile(changes) {
+    const epoch = identityEpochRef.current;
+    setProfileBusy(true);
+    try {
+      const response = await fetch('/api/session', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...changes, expectedProfileVersion: session.profileVersion ?? 0 }) });
+      const result = await response.json();
+      if (epoch !== identityEpochRef.current) return;
+      if (!response.ok) throw new Error(result.error?.message || 'No se pudo guardar el perfil.');
+      setSession((current) => ({ ...current, ...result.profile }));
+      try { const channel = new BroadcastChannel('ajedrez-session'); channel.postMessage({ type: 'profile', profile: result.profile }); channel.close(); } catch { /* Server remains authoritative. */ }
+      if (result.room) changeCurrentRoom(result.room);
+      setProfileMessage('Perfil actualizado.');
+      setProfileOpen(false);
+    } finally { if (epoch === identityEpochRef.current) setProfileBusy(false); }
+  }
+
+  async function logout(abandonActiveGame = false) {
+    const epoch = identityEpochRef.current;
+    const response = await fetch('/api/session', { method: 'DELETE', headers: abandonActiveGame ? { 'Content-Type': 'application/json' } : {}, ...(abandonActiveGame ? { body: JSON.stringify({ abandonActiveGame: true }) } : {}) });
+    const result = await response.json();
+    if (epoch !== identityEpochRef.current) return;
+    if (!response.ok) { const error = new Error(result.error?.message || 'No se pudo cerrar la sesión.'); error.code = result.error?.code; throw error; }
+    identityEpochRef.current += 1;
+    try { const channel = new BroadcastChannel('ajedrez-session'); channel.postMessage({ type: 'logout' }); channel.close(); } catch { /* Server revocation remains authoritative. */ }
+    setName(''); setEntryAvatar('club');
+    currentRoomRef.current = null; currentGameRef.current = null;
+    setCurrentRoom(null); setCurrentGame(null); setSession(null); setProfileOpen(false); setLogoutConfirm(false); setRoomAction(''); setProfileBusy(false); setLogoutBusy(false);
+  }
+
+  async function requestLogout() {
+    const epoch = identityEpochRef.current;
+    setLogoutError('');
+    if (currentGame?.status === 'playing') { setLogoutConfirm(true); return; }
+    setLogoutBusy(true);
+    try { await logout(); }
+    catch (error) {
+      if (epoch !== identityEpochRef.current) return;
+      if (error.code === 'ACTIVE_GAME_CONFIRMATION_REQUIRED') setLogoutConfirm(true);
+      else setLogoutError(error.message || 'No se pudo cerrar la sesión.');
+    } finally { if (epoch === identityEpochRef.current) setLogoutBusy(false); }
+  }
+
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return;
+    const channel = new BroadcastChannel('ajedrez-session');
+    channel.onmessage = (event) => {
+      if (event.data?.type === 'logout') invalidateIdentity('La sesión se cerró en otra pestaña.');
+      if (event.data?.type === 'profile' && Number.isSafeInteger(event.data.profile?.profileVersion)) setSession((current) => current && event.data.profile.profileVersion > current.profileVersion ? { ...current, ...event.data.profile } : current);
+    };
+    return () => channel.close();
+  }, []);
 
   function changeCurrentRoom(room) {
     currentRoomRef.current = room;
@@ -102,6 +217,7 @@ function App() {
 
   useEffect(() => {
     let active = true;
+    const epoch = identityEpochRef.current;
     fetch('/api/session', { cache: 'no-store' })
       .then(async (response) => {
         const result = await response.json();
@@ -109,14 +225,15 @@ function App() {
         return result;
       })
       .then((result) => {
-        if (!active) return;
+        if (!active || epoch !== identityEpochRef.current) return;
+        identityEpochRef.current += 1;
         setSession(result);
         changeCurrentRoom(result?.room ?? null);
         changeCurrentGame(result?.game ?? null);
         setSessionStatus('ready');
       })
       .catch((error) => {
-        if (!active) return;
+        if (!active || epoch !== identityEpochRef.current) return;
         setSessionStatus('ready');
         setSessionError(error.message || 'No se pudo comprobar tu sesión. Escribe tu nombre para volver a entrar.');
       });
@@ -156,7 +273,7 @@ function App() {
           ? 'No se pudo conectar con el lobby. Comprueba tu conexión e inténtalo de nuevo.'
           : error.message);
         if (error.message === 'Tu sesión terminó. Vuelve a entrar.') {
-          setName(session.name);
+          setName(sessionRef.current?.name ?? '');
           setSessionError(error.message);
           setSession(null);
           changeCurrentRoom(null);
@@ -171,14 +288,11 @@ function App() {
       socket.send(JSON.stringify({ type: 'game:subscribe', gameId }));
     }
 
-    function endSession(message) {
+    function endSession(message, clearIdentity = false) {
       if (!active) return;
-      setName(session.name);
-      setSessionError(message);
-      setSession(null);
+      invalidateIdentity(message, clearIdentity);
       changeCurrentRoom(null);
       changeCurrentGame(null);
-      setSessionStatus('ready');
     }
 
     async function verifySession() {
@@ -242,6 +356,10 @@ function App() {
           setRoomError(message.message || 'Se perdió la conexión con el lobby.');
         } else if (message.type === 'session:replaced') {
           setConnection('replaced');
+        } else if (message.type === 'session:state') {
+          setSession((current) => current && message.profile?.profileVersion > current.profileVersion ? { ...current, ...message.profile } : current);
+        } else if (message.type === 'session:revoked') {
+          endSession('Tu sesión se cerró en otra pestaña. Vuelve a entrar.', true);
         } else if (message.type === 'recovery:expired') {
           setRoomMessage(message.message);
         }
@@ -284,7 +402,7 @@ function App() {
       if (socketRef.current === socket) socketRef.current = null;
       socket?.close();
     };
-  }, [session, roomsRetry]);
+    }, [Boolean(session), roomsRetry]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -296,6 +414,13 @@ function App() {
     if (createOpen && !dialog.open) dialog.showModal();
     if (!createOpen && dialog.open) dialog.close();
   }, [createOpen]);
+
+  useEffect(() => {
+    if (!profileOpen && profileOpenerRef.current) {
+      if (profileOpenerRef.current.isConnected) profileOpenerRef.current.focus();
+      profileOpenerRef.current = null;
+    }
+  }, [profileOpen]);
 
   const cleanName = name.trim();
   const nameLength = Array.from(cleanName).length;
@@ -309,36 +434,42 @@ function App() {
     if (!nameValid || submitting) return;
     setSubmitting(true);
     setSessionError('');
+    const epoch = identityEpochRef.current;
     try {
       const response = await fetch('/api/session', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: cleanName }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: cleanName, avatarId: entryAvatar }),
       });
       const result = await response.json();
+      if (epoch !== identityEpochRef.current) return;
       if (!response.ok) throw new Error(result.error || 'No se pudo iniciar la sesión. Inténtalo de nuevo.');
+      identityEpochRef.current += 1;
+      setSubmitting(false);
       setSession(result);
+      window.scrollTo(0, 0);
       changeCurrentRoom(result.room ?? null);
       changeCurrentGame(result.game ?? null);
     } catch (error) {
+      if (epoch !== identityEpochRef.current) return;
       setSessionError(error.message === 'Failed to fetch'
         ? 'No se pudo conectar. Comprueba que los servicios estén iniciados e inténtalo de nuevo.'
         : error.message || 'No se pudo iniciar la sesión. Inténtalo de nuevo.');
     } finally {
-      setSubmitting(false);
+      if (epoch === identityEpochRef.current) setSubmitting(false);
     }
   }
 
   async function roomRequest(path, options, action, successMessage) {
     if (roomAction) return;
+    const epoch = identityEpochRef.current;
     setRoomAction(action);
     setRoomError('');
     setRoomMessage('');
     try {
       const response = await fetch(path, options);
       const result = await response.json();
+      if (epoch !== identityEpochRef.current) return false;
       if (response.status === 401) {
-        setName(session.name);
-        setSessionError('Tu sesión terminó. Vuelve a entrar.');
-        setSession(null);
+        invalidateIdentity('Tu sesión terminó. Vuelve a entrar.', false);
         changeCurrentRoom(null);
         changeCurrentGame(null);
         throw new Error('Tu sesión terminó. Vuelve a entrar.');
@@ -350,12 +481,13 @@ function App() {
       setRoomMessage(successMessage);
       return true;
     } catch (error) {
+      if (epoch !== identityEpochRef.current) return false;
       setRoomError(error.message === 'Failed to fetch'
         ? 'No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.'
         : error.message || 'No se pudo completar la acción. Inténtalo de nuevo.');
       return false;
     } finally {
-      setRoomAction('');
+      if (epoch === identityEpochRef.current) setRoomAction('');
     }
   }
 
@@ -370,6 +502,7 @@ function App() {
 
   async function startBotGame() {
     if (roomAction) return;
+    const epoch = identityEpochRef.current;
     setRoomAction('bot');
     setRoomError('');
     setRoomMessage('');
@@ -378,6 +511,7 @@ function App() {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ timeControl: botTimeControl }),
       });
       const result = await response.json();
+      if (epoch !== identityEpochRef.current) return false;
       if (!response.ok) throw new Error(result.error?.message || 'No se pudo iniciar la partida contra bot.');
       changeCurrentRoom(null);
       changeCurrentGame(result.game);
@@ -388,12 +522,13 @@ function App() {
       }
       return true;
     } catch (error) {
+      if (epoch !== identityEpochRef.current) return false;
       setRoomError(error.message === 'Failed to fetch'
         ? 'No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.'
         : error.message || 'No se pudo iniciar la partida. Inténtalo de nuevo.');
       return false;
     } finally {
-      setRoomAction('');
+      if (epoch === identityEpochRef.current) setRoomAction('');
     }
   }
 
@@ -409,6 +544,7 @@ function App() {
       <header className="app-header">
         <div className="app-brand"><span className="brand-mark" aria-hidden="true"><Piece type="n" /></span><div><p className="eyebrow">El club · En red local</p><h1>Ajedrez</h1></div></div>
         <div className="header-tools">
+          {session && <button className="profile-trigger" type="button" onClick={(event) => { profileOpenerRef.current = event.currentTarget; setProfileMessage(''); setProfileOpen(true); }}><Avatar id={session.avatarId} label="" />Mi perfil</button>}
           <button className="theme-toggle" type="button" aria-pressed={theme === 'dark'}
             aria-label={`Cambiar a modo ${theme === 'light' ? 'oscuro' : 'claro'}`}
             onClick={toggleTheme}>
@@ -417,6 +553,15 @@ function App() {
           </button>
         </div>
       </header>
+
+      {profileMessage && <p className="profile-saved" role="status">{profileMessage}</p>}
+      {profileOpen && session && <ProfileDialog profile={session} busy={profileBusy || logoutBusy} logoutError={logoutError} activeGame={currentGame?.status === 'playing'} coordinates={coordinates} onCoordinates={setCoordinatePreference} onClose={() => setProfileOpen(false)} onSave={saveProfile} onLogout={requestLogout} />}
+      {logoutConfirm && <LogoutDialog busy={logoutBusy} error={logoutError} onCancel={() => setLogoutConfirm(false)} onConfirm={async () => {
+        const epoch = identityEpochRef.current;
+        setLogoutBusy(true); setLogoutError('');
+        try { await logout(true); } catch (error) { if (epoch === identityEpochRef.current) setLogoutError(error.message || 'No se pudo cerrar la sesión.'); }
+        finally { if (epoch === identityEpochRef.current) setLogoutBusy(false); }
+      }} />}
 
       {sessionStatus === 'loading' && <p className="notice" role="status">Comprobando tu sesión…</p>}
 
@@ -442,6 +587,7 @@ function App() {
             <input id="player-name" name="name" type="text" value={name} maxLength={48} autoComplete="nickname" autoFocus
               aria-describedby={sessionError ? 'name-help session-error' : 'name-help'} onChange={(event) => setName(event.target.value)} />
             <p id="name-help" className="field-help">Escribe entre 2 y 24 caracteres. Quitaremos espacios al inicio y al final.</p>
+            <AvatarPicker value={entryAvatar} onChange={setEntryAvatar} />
             {sessionError && <p id="session-error" className="form-error" role="alert">{sessionError}</p>}
             <button className="primary-button" type="submit" disabled={!nameValid || submitting}>
               {submitting ? 'Entrando…' : 'Entrar'}
@@ -501,7 +647,7 @@ function App() {
             </div>}
             {roomsStatus === 'ready' && rooms.length > 0 && <ul className="room-list">
               {rooms.map((room) => <li className="room-card" key={room.id}>
-                <span className="room-card-mark" aria-hidden="true"><Piece type="k" color="black" /></span>
+                <Avatar id={room.hostAvatarId} label="" className="room-avatar" />
                 <div className="room-card-copy"><h3>{room.name}</h3><p>Anfitrión: {room.hostName}</p><p className="room-availability"><span className="occupancy">{room.players} / 2</span> Esperando jugador · {room.timeControl === 'unlimited' ? 'Sin reloj' : room.timeControl}</p></div>
                 <button className="primary-button" type="button" disabled={Boolean(roomAction)} onClick={() => roomRequest(
                   `/api/rooms/${encodeURIComponent(room.id)}/join`, { method: 'POST' }, 'join', 'Te uniste a la sala.',
@@ -515,16 +661,18 @@ function App() {
 
       {sessionStatus === 'ready' && session && currentGame
         && (currentGame.mode === 'bot' || currentRoom?.gameId === currentGame.id) && (
-        <GameScreen game={currentGame} room={currentRoom} session={session} connection={connection}
+        <GameScreen game={currentGame} room={currentRoom} session={session} connection={connection} showCoordinates={coordinates}
           onGameChange={(game) => {
             if (game.id === currentGameRef.current?.id && (game.stateVersion ?? game.revision) >= (currentGameRef.current.stateVersion ?? currentGameRef.current.revision)) changeCurrentGame(game);
           }}
           onReturnToLobby={async () => {
+            const epoch = identityEpochRef.current;
             const path = currentGame.mode === 'bot'
               ? `/api/games/${encodeURIComponent(currentGame.id)}/leave`
               : `/api/rooms/${encodeURIComponent(currentRoom.id)}/leave`;
             const response = await fetch(path, { method: 'POST' });
             const result = await response.json();
+            if (epoch !== identityEpochRef.current) return;
             if (!response.ok) throw new Error(result.error?.message || 'No se pudo volver al lobby.');
             changeCurrentRoom(null);
             changeCurrentGame(null);
@@ -537,6 +685,7 @@ function App() {
           <div className="waiting-emblem" aria-hidden="true"><Piece type="k" /></div>
           <p className="eyebrow">Tu mesa está preparada</p>
           <h2 id="room-title">{currentRoom.name}</h2>
+          <p className="room-code">Código de sala <strong>{currentRoom.id.slice(0, 8).toUpperCase()}</strong></p>
           <p className="description">Control de tiempo: {currentRoom.timeControl === 'unlimited' ? 'Sin reloj' : currentRoom.timeControl}</p>
           <p className="connection-status" role="status">{currentRoom.connection?.status === 'disconnected'
             ? 'Conexión perdida. Intentando recuperar esta sala…'
@@ -549,9 +698,9 @@ function App() {
                   : currentRoom.status === 'waiting' ? 'Esperando jugador' : 'Sala lista'}</p>
           <h3>Jugadores</h3>
           <ol className="player-list">
-            <li><span className="slot-piece" aria-hidden="true"><Piece type="k" /></span><div><strong>{currentRoom.hostName}</strong><span>Anfitrión · Blancas</span></div></li>
+            <li><Avatar id={currentRoom.hostAvatarId} label="" /><div><strong>{currentRoom.hostName}</strong><span>Anfitrión · Blancas</span></div></li>
             {currentRoom.guestName
-              ? <li><strong>{currentRoom.guestName}</strong><span>Invitado · Negras</span></li>
+              ? <li><Avatar id={currentRoom.guestAvatarId} label="" /><div><strong>{currentRoom.guestName}</strong><span>Invitado · Negras</span></div></li>
               : <li className="player-slot"><span className="slot-piece" aria-hidden="true">+</span><div><strong>Esperando otro jugador…</strong><span>Plaza 2 de 2</span></div></li>}
           </ol>
           {currentRoom.status === 'ready' && <p className="description">La partida está lista. Cargando el tablero…</p>}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Piece from './Piece.jsx';
+import { Avatar } from './Avatar.jsx';
 
 const names = { k: 'rey', q: 'dama', r: 'torre', b: 'alfil', n: 'caballo', p: 'peón' };
 const promotions = [
@@ -93,7 +94,7 @@ function CapturedPieces({ moves, color }) {
   </div> : null;
 }
 
-export default function GameScreen({ game, room, session, connection, onGameChange, onReturnToLobby, onNewBotGame }) {
+export default function GameScreen({ game, room, session, connection, showCoordinates = true, onGameChange, onReturnToLobby, onNewBotGame }) {
   const [selected, setSelected] = useState(null);
   const [legalMoves, setLegalMoves] = useState([]);
   const [legalLoading, setLegalLoading] = useState(false);
@@ -419,7 +420,7 @@ export default function GameScreen({ game, room, session, connection, onGameChan
                 }
               }}
               onClick={() => { setFocusedSquare(square); void activateSquare(square); }}>
-              <span className="square-coordinate" aria-hidden="true">{fileIndex === 0 ? square[1] : ''}{rankIndex === 7 ? square[0] : ''}</span>
+              {showCoordinates && <span className="square-coordinate" aria-hidden="true">{fileIndex === 0 ? square[1] : ''}{rankIndex === 7 ? square[0] : ''}</span>}
               {targetMoves.length > 0 && <span className="move-marker" aria-hidden="true" />}
               {piece && <span className={`piece-symbol ${pieceColor}`} aria-hidden="true" style={animation || rookAnimation ? {
                 '--from-x': (animation || rookAnimation).x, '--from-y': (animation || rookAnimation).y,
@@ -468,6 +469,7 @@ export default function GameScreen({ game, room, session, connection, onGameChan
 function PlayerCard({ player, color, label, active, isYou = false, clock, localNow, receivedAt, paused }) {
   return <div className={`game-player${active ? ' active-player' : ''}`}>
     <span className={`color-piece ${color}`} aria-hidden="true"><Piece type="k" color={color} /></span>
+    <Avatar id={player.avatarId ?? (label.startsWith('Bot') ? 'knight' : 'club')} label="" className="game-avatar" />
     <div><strong>{player.name}{isYou ? ' (tú)' : ''}</strong><span>{label}</span></div>
     <ClockDisplay clock={clock} color={color} active={active} localNow={localNow} receivedAt={receivedAt} paused={paused} />
     {active && <strong className="player-turn">{isYou ? 'TU TURNO' : 'TURNO'}</strong>}

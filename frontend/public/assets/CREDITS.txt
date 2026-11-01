@@ -23,3 +23,8 @@ Licencia: SIL Open Font License 1.1. Texto completo en fonts/OFL.txt.
 Archivo fonts/Newsreader.ttf redistribuido sin modificar, descargado el 2026-10-15.
 
 Todos los recursos se sirven localmente. No se necesita un CDN para jugar.
+
+AVATARES DEL CLUB
+Avatares club.svg, knight.svg, rook.svg, bishop.svg, compass.svg y shield.svg.
+Diseño vectorial original de este proyecto, creado para la Iteración 3.
+Sin recursos externos ni atribuciones de terceros.

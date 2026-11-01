@@ -72,3 +72,7 @@ El snapshot en memoria conserva también metadatos estructurados por jugada (col
 6. Reiniciar servidor pierde registros pendientes; advertir esta limitación en instrucciones de demo. No fingir durabilidad.
 
 No añadir pantallas de administración, borrado, estadísticas ni recuperación de partidas. Antes de probar con estudiantes, obtener consentimiento y usar alias: el archivo contiene nombres visibles. Resultados UX se guardan separados y anonimizados en documentación, no en tablas de producto.
+
+## Iteración 3 — perfil efímero
+
+El perfil vive en sesión de Node: `name`, `avatarId`, `profileVersion` y tipo público `guest`. No se agregan tablas, columnas ni migración. Sesiones antiguas sin avatar usan `club` y versión 0. La lista cerrada es `club`, `knight`, `rook`, `bishop`, `compass`, `shield`; el avatar bot es fijo. Archivo y PGN conservan la identidad tomada al iniciar partida. Preferencias del navegador no son datos de perfil ni credenciales.

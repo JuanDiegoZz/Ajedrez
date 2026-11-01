@@ -2,8 +2,8 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import pg from 'pg';
-import { createSession, getSession, sessionTtlMs, validateName } from './sessions.js';
-import { cancelRoom, createRoom, getRoomForSession, getRoomGameData, joinRoom, leaveRoom, listRooms, setRoomGame } from './rooms.js';
+import { avatarIds, createSession, findSession, getSession, publicSession, revokeSession, sessionCookieName, sessionCookieNamesFromCookieHeader, sessionIdFromCookieHeader, sessionTtlMs, staleSessionCookieNamesFromCookieHeader, updateSessionProfile, validateName } from './sessions.js';
+import { cancelRoom, createRoom, getRoomForSession, getRoomGameData, joinRoom, leaveRoom, listRooms, setRoomGame, updateWaitingRoomProfile } from './rooms.js';
 import {
   applyBotMove, createBotGame, createGame, getArchiveRecord, getBotSearchInput, getGame,
   getGameForSession, getGamePgn, getLegalMoves, leaveBotGame, makeMove, markGameArchived,
@@ -106,17 +106,34 @@ function sendJson(response, status, body, headers = {}) {
 }
 
 function sessionIdFrom(request) {
-  const cookies = request.headers.cookie?.split(';') ?? [];
-  const value = cookies.map((cookie) => cookie.trim()).find((cookie) => cookie.startsWith('ajedrez_session='));
-  return value?.slice('ajedrez_session='.length);
+  return sessionIdFromCookieHeader(request.headers.cookie);
 }
 
-function setSessionCookie(response, id) {
-  response.setHeader('Set-Cookie', `ajedrez_session=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sessionTtlMs / 1000}`);
+function setSessionCookie(response, id, request) {
+  const session = findSession(id);
+  if (!session) return;
+  const cookieName = sessionCookieName(session);
+  response.setHeader('Set-Cookie', [
+    `${cookieName}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sessionTtlMs / 1000}`,
+    ...staleSessionCookieNamesFromCookieHeader(request?.headers.cookie, id, cookieName)
+      .map((name) => `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`),
+  ]);
 }
 
-function clearSessionCookie(response) {
-  response.setHeader('Set-Cookie', 'ajedrez_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+function sameOriginMutation(request) {
+  const origin = request.headers.origin;
+  if (!origin) return request.headers['sec-fetch-site'] !== 'cross-site';
+  try { return new URL(origin).host.toLowerCase() === request.headers.host?.toLowerCase(); }
+  catch { return false; }
+}
+
+function clearSessionCookie(response, name = 'ajedrez_session') {
+  response.setHeader('Set-Cookie', `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+}
+
+function clearSessionCookiesFromRequest(response, request) {
+  const cookies = sessionCookieNamesFromCookieHeader(request.headers.cookie);
+  if (cookies.length) response.setHeader('Set-Cookie', cookies.map((name) => `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`));
 }
 
 async function readJson(request) {
@@ -160,6 +177,70 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (pathname === '/api/session' && request.method === 'PATCH') {
+    if (!sameOriginMutation(request)) { sendJson(response, 403, { error: { code: 'ORIGIN_REJECTED', message: 'La solicitud debe venir de esta aplicación.' } }); return; }
+    const sessionId = sessionIdFrom(request);
+    const session = sessionId && getSession(sessionId);
+    if (!session) { sendJson(response, 401, { error: { code: 'SESSION_REQUIRED', message: 'Tu sesión terminó.' } }); return; }
+    try {
+      const input = await readJson(request);
+      const current = getSession(session.id);
+      if (!current) { sendJson(response, 401, { error: { code: 'SESSION_REQUIRED', message: 'Tu sesión terminó.' } }); return; }
+      const room = getRoomForSession(current);
+      const game = room?.gameId ? getGame(current.id, room.gameId) : getGameForSession(current.id);
+      if (game?.status === 'playing') { sendJson(response, 409, { error: { code: 'PROFILE_LOCKED_DURING_GAME', message: 'Podrás cambiar tu nombre y avatar cuando termine la partida.' } }); return; }
+      const updated = updateSessionProfile(current.id, input);
+      if (updated.error) { sendJson(response, updated.error === 'STALE_PROFILE' ? 409 : updated.error === 'SESSION_REQUIRED' ? 401 : 400, { error: { code: updated.error, message: updated.message ?? 'Revisa nombre y avatar.' } }); return; }
+      const updatedRoom = updated.changed ? updateWaitingRoomProfile(current) : getRoomForSession(current);
+      if (updated.changed) {
+        lobby.broadcast();
+        lobby.broadcastProfile(current);
+      }
+      setSessionCookie(response, current.id, request);
+      sendJson(response, 200, { profile: updated.session, room: updatedRoom });
+    } catch (error) { sendJson(response, error.status ?? 400, { error: { code: error.code ?? 'INVALID_REQUEST', message: error.message ?? 'No se pudo actualizar el perfil.' } }); }
+    return;
+  }
+
+  if (pathname === '/api/session' && request.method === 'DELETE') {
+    if (!sameOriginMutation(request)) { sendJson(response, 403, { error: { code: 'ORIGIN_REJECTED', message: 'La solicitud debe venir de esta aplicación.' } }); return; }
+    const sessionId = sessionIdFrom(request);
+    const session = sessionId && getSession(sessionId);
+    if (!session) { sendJson(response, 200, { loggedOut: true }); return; }
+    try {
+      const input = request.headers['content-type']?.startsWith('application/json') ? await readJson(request) : {};
+      const current = getSession(session.id);
+      if (!current) { sendJson(response, 200, { loggedOut: true }); return; }
+      const room = getRoomForSession(current);
+      const game = room?.gameId ? getGame(current.id, room.gameId) : getGameForSession(current.id);
+      if (game?.status === 'playing' && input?.abandonActiveGame !== true) { sendJson(response, 409, { error: { code: 'ACTIVE_GAME_CONFIRMATION_REQUIRED', message: 'Confirma que quieres abandonar la partida.' } }); return; }
+      let endedNow = false;
+      if (game?.status === 'playing') {
+        let finished;
+        try { finished = resignGame(current.id, game.id); }
+        catch (error) {
+          if (error.code !== 'GAME_NOT_ACTIVE') throw error;
+          finished = getGame(current.id, game.id);
+          if (finished.status !== 'finished') throw error;
+        }
+        endedNow = finished.status === 'finished';
+        if (game.mode === 'bot') cancelBotTurn(game.id);
+        lobby.broadcastGame(finished);
+        void archiveGame(game.id);
+      }
+      if (room?.gameId) leaveRoom(current, room.id, true);
+      else if (game?.mode === 'bot' && (game.status === 'finished' || endedNow)) leaveBotGame(current.id, game.id);
+      else if (room?.status === 'waiting') cancelRoom(current, room.id);
+      lobby.broadcast();
+      lobby.cancelRecovery(current.id);
+      revokeSession(current.id);
+      lobby.revokeSession(current.id);
+      clearSessionCookie(response, sessionCookieName(session));
+      sendJson(response, 200, { loggedOut: true });
+    } catch (error) { sendJson(response, error.status ?? 409, { error: { code: error.code ?? 'LOGOUT_FAILED', message: error.message ?? 'No se pudo cerrar la sesión.' } }); }
+    return;
+  }
+
   if (pathname === '/api/session' && (request.method === 'GET' || request.method === 'POST')) {
     const sessionId = sessionIdFrom(request);
     const existingSession = sessionId && getSession(sessionId);
@@ -167,7 +248,7 @@ const server = createServer(async (request, response) => {
     if (request.method === 'GET') {
       if (!existingSession) {
         if (sessionId) {
-          clearSessionCookie(response);
+          clearSessionCookiesFromRequest(response, request);
           sendJson(response, 410, { error: 'El servidor se reinició o tu sesión terminó; la partida no puede recuperarse. Vuelve a entrar.' });
           return;
         }
@@ -175,35 +256,45 @@ const server = createServer(async (request, response) => {
         return;
       }
       const room = getRoomForSession(existingSession);
-      setSessionCookie(response, existingSession.id);
+      setSessionCookie(response, existingSession.id, request);
       sendJson(response, 200, {
-        name: existingSession.name, room,
+        ...publicSession(existingSession), room,
         game: room?.gameId ? getGame(existingSession.id, room.gameId) : getGameForSession(existingSession.id),
       });
       return;
     }
 
     if (existingSession) {
-      setSessionCookie(response, existingSession.id);
+      setSessionCookie(response, existingSession.id, request);
       const room = getRoomForSession(existingSession);
       sendJson(response, 200, {
-        name: existingSession.name, room,
+        ...publicSession(existingSession), room,
         game: room?.gameId ? getGame(existingSession.id, room.gameId) : getGameForSession(existingSession.id),
       });
       return;
     }
 
+    if (sessionId) {
+      clearSessionCookiesFromRequest(response, request);
+      sendJson(response, 410, { error: 'La sesión anterior terminó. Inténtalo de nuevo.' });
+      return;
+    }
+
     try {
       const input = await readJson(request);
+      if (input?.avatarId !== undefined && !avatarIds.includes(input.avatarId)) {
+        sendJson(response, 400, { error: 'Elige un avatar disponible.' });
+        return;
+      }
       const result = validateName(input?.name);
       if (result.error) {
         sendJson(response, 400, { error: result.error });
         return;
       }
 
-      const session = createSession(result.name);
-      setSessionCookie(response, session.id);
-      sendJson(response, 201, { name: session.name, room: null });
+      const session = createSession(result.name, Date.now(), avatarIds.includes(input?.avatarId) ? input.avatarId : 'club');
+      setSessionCookie(response, session.id, request);
+      sendJson(response, 201, { ...publicSession(session), room: null });
     } catch (error) {
       sendJson(response, error.status ?? 400, { error: error.status === 415
         ? 'No se pudo enviar el nombre. Inténtalo de nuevo.'
@@ -220,11 +311,10 @@ const server = createServer(async (request, response) => {
     const sessionId = sessionIdFrom(request);
     const session = sessionId && getSession(sessionId);
     if (!session) {
-      if (sessionId) clearSessionCookie(response);
       sendJson(response, 401, { error: { code: 'SESSION_REQUIRED', message: 'Inicia una sesión para continuar.' } });
       return;
     }
-    setSessionCookie(response, session.id);
+    setSessionCookie(response, session.id, request);
     sendJson(response, 200, { rooms: listRooms() });
     return;
   }
@@ -245,9 +335,11 @@ const server = createServer(async (request, response) => {
     try { if (request.headers['content-type']?.startsWith('application/json')) input = await readJson(request); }
     catch (error) { sendJson(response, error.status ?? 400, { error: { code: 'INVALID_REQUEST', message: error.message } }); return; }
     let game;
-    try { game = createBotGame(session.id, session.name, { timeControl: input.timeControl }); }
+    const currentSession = getSession(session.id);
+    if (!currentSession) { sendJson(response, 401, { error: { code: 'SESSION_REQUIRED', message: 'Tu sesión terminó.' } }); return; }
+    try { game = createBotGame(currentSession.id, currentSession.name, { timeControl: input.timeControl, avatarId: currentSession.avatarId }); }
     catch (error) { sendJson(response, error.status ?? 400, { error: { code: error.code ?? 'INVALID_TIME_CONTROL', message: error.message } }); return; }
-    setSessionCookie(response, session.id);
+    setSessionCookie(response, session.id, request);
     sendJson(response, existing?.status === 'playing' ? 200 : 201, { game });
     return;
   }
@@ -280,6 +372,7 @@ const server = createServer(async (request, response) => {
       }
       if (request.method === 'POST' && action === 'moves') {
         const input = await readJson(request);
+        if (!getSession(session.id)) { sendJson(response, 401, { error: { code: 'SESSION_REQUIRED', message: 'Tu sesión terminó.' } }); return; }
         const game = makeMove(session.id, gameId, input);
         sendJson(response, 200, { game });
         lobby.broadcastGame(game);
@@ -326,9 +419,10 @@ const server = createServer(async (request, response) => {
     }
     try {
       const input = await readJson(request);
+      if (!getSession(session.id)) { sendJson(response, 401, { error: { code: 'SESSION_REQUIRED', message: 'Tu sesión terminó.' } }); return; }
       const existingRoom = getRoomForSession(session);
       const room = createRoom(session, input?.name, input?.timeControl);
-      setSessionCookie(response, session.id);
+      setSessionCookie(response, session.id, request);
       sendJson(response, existingRoom ? 200 : 201, { room });
       lobby.broadcast();
     } catch (error) {
@@ -369,7 +463,7 @@ const server = createServer(async (request, response) => {
         leaveRoom(session, roomId, gameFinished);
         room = getRoomForSession(session);
       }
-      setSessionCookie(response, session.id);
+      setSessionCookie(response, session.id, request);
       sendJson(response, 200, { room, ...(game ? { game } : {}) });
       lobby.broadcast();
     } catch (error) {
@@ -391,7 +485,7 @@ const server = createServer(async (request, response) => {
     }
     try {
       cancelRoom(session, decodeURIComponent(roomToCancel[1]));
-      setSessionCookie(response, session.id);
+      setSessionCookie(response, session.id, request);
       sendJson(response, 200, { room: null });
       lobby.broadcast();
     } catch (error) {

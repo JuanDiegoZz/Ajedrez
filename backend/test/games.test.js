@@ -52,8 +52,8 @@ test('creates a public initial game with host as white and guest as black', () =
   assert.equal(game.status, 'playing');
   assert.equal(game.turn, 'white');
   assert.equal(game.fen, 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
-  assert.deepEqual(game.white, { name: 'Alex' });
-  assert.deepEqual(game.black, { name: 'Sam' });
+  assert.deepEqual(game.white, { name: 'Alex', avatarId: 'club' });
+  assert.deepEqual(game.black, { name: 'Sam', avatarId: 'club' });
   assert.equal(JSON.stringify(game).includes('session'), false);
 });
 
@@ -216,8 +216,8 @@ test('creates a private bot game and applies only a revision-matched bot move', 
   assert.equal(game.mode, 'bot');
   assert.equal(game.turn, 'white');
   assert.equal(game.you, 'white');
-  assert.deepEqual(game.white, { name: 'Alex' });
-  assert.deepEqual(game.black, { name: 'Bot' });
+  assert.deepEqual(game.white, { name: 'Alex', avatarId: 'club' });
+  assert.deepEqual(game.black, { name: 'Bot', avatarId: 'bot' });
   assert.equal(JSON.stringify(game).includes('human-session'), false);
   assert.equal(getGameForSession('human-session').id, game.id);
   assert.throws(() => getGame('intruder', game.id), { code: 'NOT_A_PLAYER' });
