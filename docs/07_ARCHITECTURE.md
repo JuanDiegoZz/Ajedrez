@@ -92,3 +92,13 @@ Nombre público separado de ID aleatorio secreto de sesión. Cookie HttpOnly del
 - [Docker: publicar puertos](https://docs.docker.com/get-started/docker-concepts/running-containers/publishing-ports/): exposición al host.
 
 No se escriben Dockerfiles, manifiestos, endpoints ni código durante fase 0.
+
+## Iteración 3 — identidad temporal
+
+`sessions.js` mantiene perfil invitado en memoria, sin tabla PostgreSQL. `PATCH /api/session` valida nombre/avatar y `expectedProfileVersion`, conserva ID/cookie y publica cambios solo si cambian datos. El lobby notifica `session:state`; el cliente aplica solo versiones más nuevas. Nombre/avatar de partida se copian al crearla y no se reescriben en archivo ni PGN.
+
+`DELETE /api/session` revoca sesión en servidor: cancela recuperación, limpia control WebSocket y cierra el socket; en sala esperando cancela sala; en partida activa exige confirmación y finaliza por abandono después de resolver timeout vencido. Sesiones inexistentes no renuevan cookie. Mutaciones de sesión rechazan origen cruzado. BroadcastChannel informa logout/perfil a otras pestañas, pero servidor sigue como autoridad. Un epoch local descarta respuestas HTTP antiguas tras cambio de identidad.
+
+### Cookies de sesiones superpuestas
+
+Cada sesión emite cookie HttpOnly con nombre aleatorio propio (`ajedrez_session_<nonce>`). El servidor acepta también `ajedrez_session` heredada y elige la sesión activa más nueva entre cookies reconocidas. Logout expira solo cookie de esa sesión y revoca su ID. Una respuesta atrasada solo puede restaurar cookie vieja revocada; no sustituye la cookie de identidad nueva. Prueba de API combina cookie vieja revocada y nueva, y debe recuperar la identidad nueva.

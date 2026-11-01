@@ -1,4 +1,4 @@
-﻿# 14 — Progreso, auditoría y evidencia
+# 14 — Progreso, auditoría y evidencia
 
 ## Launcher Windows — 2026-10-15
 
@@ -381,3 +381,15 @@ AGENTS.md sigue siendo la fuente de reglas del agente. No se modificaron su cont
 - `backend npm test`: 81/81 tras los cambios finales. `frontend npm run build`: correcto. `docker compose config --quiet` y `docker compose up -d --build`: correctos. PostgreSQL healthy y `/api/health`: backend/database available. En DB de desarrollo se confirmaron 65 partidas, 220 movimientos, 17 interrumpidas, 0 referencias rotas y 65 históricas con control NULL.
 - Playwright: selector 5+0 predeterminado, sala con 10+5, partida bot 5+0, jugada e2–e4 y respuesta automática del bot; snapshot mostró dos relojes, historial SAN con SVG y turnos alternos. En 1440/1024/768/390/320 px no hubo desbordamiento horizontal. Contexto limpio: consola sin errores.
 - PGN exporta solo partidas terminadas, con metadatos básicos. No incluye tiempos por jugada, pues el historial de reloj no se persiste por movimiento.
+
+## Iteración 3 — verificación técnica (2026-11-01)
+
+- Backend: `npm test` pasó 90/90, incluye cookie revocada seguida de identidad nueva y compatibilidad de cookie heredada.
+- Frontend: `npm run build` pasó; 20 módulos.
+- Compose: `docker compose up -d --build` pasó; PostgreSQL healthy; `/api/health` reportó backend y database `available`.
+- Playwright real: perfil y avatar persistieron tras refresh; coordenadas se conservaron tras logout y nueva identidad; tema sobrevivió refresh; foco regresó a `Mi perfil` al cerrar con Escape; preferencias inválidas usaron default.
+- Dos pestañas de la misma sesión: logout limpió ambas; reentrada creó otra identidad. PATCH y GET demorados hasta después de logout/reentrada no reemplazaron identidad. Un `Set-Cookie` viejo pudo coexistir temporalmente con B; la siguiente petición eliminó la cookie revocada y conservó B.
+- Auditoría final: 5+0 A/B, dos jugadas y logout voluntario archivaron un resultado único por abandono; rival vio resultado guardado, saldos y PGN válido con `e4 e5`. Logout del bot tras respuesta automática volvió a bienvenida; logout tras pausa real de WebSocket también archivó abandono sin reanudar reloj ni aplicar gracia. Se retiraron de forma transaccional solo 4 partidas/6 movimientos identificados de prueba; inventario volvió a 66 partidas/222 movimientos.
+- Viewport lobby/dialog: 1440, 1024, 768, 390 y 320 px, `scrollWidth == clientWidth`; sin overflow horizontal. Consola sin errores en el flujo normal; la prueba de sesión revocada observó HTTP 410 esperado al validar una cookie obsoleta.
+- Inventario PostgreSQL antes/después de pruebas de Iteración 3: 66 partidas, 222 movimientos, 17 interrumpidas. Sin filas de prueba añadidas ni migración.
+- No se realizó evaluación con participantes; evidencia anterior es técnica, no de satisfacción.

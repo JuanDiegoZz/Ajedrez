@@ -42,6 +42,17 @@ test('stop clears pending recovery timers', async () => {
   assert.deepEqual(events, []);
 });
 
+test('voluntary session revocation cancels recovery without expiring the game', async () => {
+  const events = [];
+  const recovery = createRecoveryManager({ graceMs: 10, onExpire: (...values) => events.push(values) });
+  recovery.disconnect('session-logout');
+  assert.equal(recovery.cancel('session-logout'), true);
+  assert.equal(recovery.cancel('session-logout'), false);
+  await wait(20);
+  assert.deepEqual(events, []);
+  recovery.stop();
+});
+
 test('a reconnect at or after its deadline expires instead of restoring the session', () => {
   const events = [];
   const recovery = createRecoveryManager({ graceMs: 0, onExpire: (...values) => events.push(values) });

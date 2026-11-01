@@ -81,3 +81,9 @@ Piezas Cburnett SVG y Newsreader se distribuyen localmente; fuentes y licencias 
 - Pausa por desconexión explica estado y recuperación disponible.
 - El cliente interpola sin declarar timeout. Resultado final solo llega del servidor.
 - En móvil, conservar tablero protagonista y relojes junto a los jugadores; evitar scroll horizontal.
+
+## Iteración 3 — perfil y preferencias
+
+`Mi perfil` es diálogo modal accesible, no página. Incluye etiqueta `Jugador invitado`, nombre, seis avatares locales, preferencia de coordenadas y logout. Guardar indica progreso/éxito/error; nombre y avatares quedan bloqueados durante partida humana, partida bot y pausa. Logout activo abre confirmación con `Seguir jugando` como foco inicial. El foco vuelve al botón que abrió el diálogo.
+
+Los avatares no indican color de piezas: rol/color se muestra aparte. Coordenadas ocultas desaparecen solo visualmente; nombres accesibles y navegación de casillas continúan. Preferencias de tema y coordenadas sobreviven logout; almacenamiento local inválido o bloqueado usa defaults sin impedir jugar.

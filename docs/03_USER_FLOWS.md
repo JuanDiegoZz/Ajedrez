@@ -76,3 +76,9 @@ La captura usa el mismo flujo: anillo en destino ocupado y descripción de pieza
 Desde lobby, “Jugar contra bot” inicia directamente con humano blancas. Tras cada movimiento confirmado, mostrar “Bot pensando…”. Mismo tablero, reglas, promoción y resultado que en humano.
 
 Desconexión: bloquear envío, mostrar reintento y plazo de `09`. Recuperar sesión y snapshot antes de habilitar tablero. Si servidor reinició, informar que la partida no puede recuperarse y ofrecer volver a entrar. Una intención sin confirmación nunca se reenvía automáticamente.
+
+## Iteración 3 — perfil invitado
+
+Desde lobby, sala esperando o resultado final, `Mi perfil` abre un diálogo. Editar nombre/avatar usa `PATCH /api/session` y versión optimista; una partida activa o pausada congela la identidad. Un cambio del anfitrión actualiza su identidad pública en la sala, sin renombrarla. Nombres repetidos se distinguen por avatar y rol/color.
+
+Logout en lobby revoca la sesión directamente; en sala esperando también cancela la sala. En partida activa pide confirmación, resuelve primero timeout y, si aún juega, abandona antes de revocar. En juego pausado no reanuda reloj ni gracia. En partida terminada conserva resultado y reintento de archivo. La cookie se expira y bienvenida queda lista para otra identidad temporal.

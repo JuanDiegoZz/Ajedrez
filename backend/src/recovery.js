@@ -41,10 +41,18 @@ export function createRecoveryManager({
     return true;
   }
 
+  function cancel(sessionId) {
+    const entry = pending.get(sessionId);
+    if (!entry) return false;
+    clearTimeout(entry.timer);
+    pending.delete(sessionId);
+    return true;
+  }
+
   function stop() {
     for (const { timer } of pending.values()) clearTimeout(timer);
     pending.clear();
   }
 
-  return { disconnect, reconnect, stop };
+  return { disconnect, reconnect, cancel, stop };
 }

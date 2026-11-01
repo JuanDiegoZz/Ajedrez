@@ -53,3 +53,10 @@ Cada fase deja un entregable comprobable. Fases 3–4 no se presentan como aplic
 - [ ] Responsable del proyecto revisa entregable y acepta cierre académico.
 
 No basta compilar. No se requiere implementar opciones de `01` para terminar.
+
+## Iteración 3 — identidad y personalización
+
+- [x] Perfil invitado temporal, cambio versionado de nombre/avatar, seis SVG locales y preferencia de coordenadas.
+- [x] Logout de servidor con reglas por estado, confirmación de abandono activo, revocación WebSocket y cancelación de recuperación.
+- [x] Diálogo Mi perfil, sincronización entre pestañas y actualización de anfitrión en sala esperando.
+- [ ] Prueba académica con participantes: no realizada; no inferir aceptación humana.

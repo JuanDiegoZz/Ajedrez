@@ -55,12 +55,16 @@ ajedrez/
 │   ├── vite.config.js
 │   ├── public/assets/
 │   │   ├── CREDITS.txt
+│   │   ├── avatars/ (club, knight, rook, bishop, compass, shield SVG)
 │   │   ├── fonts/ (Newsreader.ttf, OFL.txt)
 │   │   └── pieces/ (12 SVG Cburnett, GPL-2.0.txt)
 │   └── src/
 │       ├── main.jsx
 │       ├── GameScreen.jsx
 │       ├── Piece.jsx
+│       ├── Avatar.jsx
+│       ├── ProfileDialog.jsx
+│       ├── LogoutDialog.jsx
 │       └── styles.css
 ├── docs/
 │   ├── 00_VISION.md … 15_FINAL_DEMO.md
@@ -85,3 +89,5 @@ ajedrez/
 ```
 
 Fase 7 añade búsqueda minimax acotada en un trabajador Node; `chess.js` sigue siendo la autoridad de reglas. Fases 6–7 reutilizan el WebSocket existente para recuperación y snapshots. Las carpetas de datos locales y cachés de herramientas no forman parte del árbol de producto.
+
+Iteración 3 añade `Avatar.jsx`, `ProfileDialog.jsx`, `LogoutDialog.jsx` y seis SVG propios en `frontend/public/assets/avatars/`, además de cambios en sesiones, salas, lobby/backend y pruebas. Perfil permanece temporal; no agrega cuentas ni migración PostgreSQL.

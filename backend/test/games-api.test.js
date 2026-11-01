@@ -35,8 +35,8 @@ test('starts one authoritative game when a second session joins a room', async (
   assert.equal(joinedBody.game.status, 'playing');
   assert.equal(joinedBody.game.turn, 'white');
   assert.equal(joinedBody.game.you, 'black');
-  assert.deepEqual(joinedBody.game.white, { name: 'Alex' });
-  assert.deepEqual(joinedBody.game.black, { name: 'Sam' });
+  assert.deepEqual(joinedBody.game.white, { name: 'Alex', avatarId: 'club' });
+  assert.deepEqual(joinedBody.game.black, { name: 'Sam', avatarId: 'club' });
   assert.equal(JSON.stringify(joinedBody).includes(host.cookie), false);
   assert.equal(JSON.stringify(joinedBody).includes(guest.cookie), false);
 
@@ -113,7 +113,7 @@ test('starts a private bot game and recovers it through the existing session', a
   const game = (await created.json()).game;
   assert.equal(game.mode, 'bot');
   assert.equal(game.you, 'white');
-  assert.deepEqual(game.black, { name: 'Bot' });
+  assert.deepEqual(game.black, { name: 'Bot', avatarId: 'bot' });
   assert.equal(game.roomId, null);
   assert.equal(JSON.stringify(game).includes('session'), false);
 
@@ -148,7 +148,7 @@ test('paused game rejects HTTP move and legal-move requests until the same sessi
   const guest = await enter(base, 'Pause Guest');
   const joined = await fetch(`${base}/api/rooms/${room.id}/join`, { method: 'POST', headers: { Cookie: guest.cookie } });
   const game = (await joined.json()).game;
-  const hostSessionId = host.cookie.slice('ajedrez_session='.length);
+  const hostSessionId = host.cookie.slice(host.cookie.indexOf('=') + 1);
   markGameDisconnected(hostSessionId, game.id, Date.now() + 60_000);
 
   const moves = await fetch(`${base}/api/games/${game.id}/legal-moves?from=e2`, { headers: { Cookie: guest.cookie } });

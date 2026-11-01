@@ -27,7 +27,9 @@ function publicRoom(room) {
     id: room.id,
     name: room.name,
     hostName: room.hostName,
+    hostAvatarId: room.hostAvatarId ?? 'club',
     guestName: room.guestName,
+    guestAvatarId: room.guestAvatarId ?? null,
     status: room.status,
     timeControl: room.timeControl,
     gameId: room.gameId,
@@ -61,6 +63,7 @@ export function createRoom(session, value, requestedTimeControl) {
     name: validation.name,
     hostSessionId: session.id,
     hostName: session.name,
+    hostAvatarId: session.avatarId ?? 'club',
     guestSessionId: null,
     guestName: null,
     timeControl,
@@ -116,8 +119,10 @@ export function getRoomGameData(id) {
     id: room.id,
     hostSessionId: room.hostSessionId,
     hostName: room.hostName,
+    hostAvatarId: room.hostAvatarId ?? 'club',
     guestSessionId: room.guestSessionId,
     guestName: room.guestName,
+    guestAvatarId: room.guestAvatarId ?? 'club',
     timeControl: room.timeControl,
   };
 }
@@ -141,8 +146,22 @@ export function joinRoom(session, id) {
 
   room.guestSessionId = session.id;
   room.guestName = session.name;
+  room.guestAvatarId = session.avatarId ?? 'club';
   room.status = 'ready';
   roomBySession.set(session.id, room.id);
+  return publicRoom(room);
+}
+
+export function updateWaitingRoomProfile(session) {
+  const room = activeRoom(session);
+  if (!room || room.status !== 'waiting') return null;
+  if (room.hostSessionId === session.id) {
+    room.hostName = session.name;
+    room.hostAvatarId = session.avatarId ?? 'club';
+  } else if (room.guestSessionId === session.id) {
+    room.guestName = session.name;
+    room.guestAvatarId = session.avatarId ?? 'club';
+  }
   return publicRoom(room);
 }
 

@@ -1,4 +1,4 @@
-﻿# 11 — Verificación técnica y evaluación UX
+# 11 — Verificación técnica y evaluación UX
 
 Este documento define metodología. No contiene resultados reales ni porcentajes de mejora ficticios.
 
@@ -94,3 +94,9 @@ Las metas UX orientan cierre; si no se alcanzan, se requiere otra iteración o a
 ## Iteración 2 — reloj, estado y exportación
 
 Backend usa reloj inyectable para cubrir deadline exacto, callback obsoleto, demora, pausas, incrementos, duplicados, promoción, timeout y worker tardío sin esperar minutos reales. Se prueba migración repetida en esquema histórico restaurado y reintentos transaccionales de archivo. Las pruebas frontend manuales deben registrar navegador, tamaños, temas y errores; no convertir pruebas técnicas en evaluación humana.
+
+## Iteración 3 — pruebas de aceptación técnica
+
+`npm test` final: 89/89. Frontend `npm run build`: correcto. Compose reconstruido sin borrar volumen; PostgreSQL healthy y `/api/health` disponible. Playwright cubrió perfil/avatares, refresh, preferencias, logout, identidad nueva entre pestañas, respuesta PATCH retrasada, foco/escape, y medidas 1440/1024/768/390/320. Se comprobó consola limpia en flujo normal; el caso de cookie obsoleta produjo HTTP 410 esperado al rechazar una sesión revocada. PostgreSQL quedó en 66 partidas, 222 movimientos y 17 interrumpidas; la iteración no agrega migración.
+
+No se realizó prueba académica con estudiantes ni evaluación de satisfacción. La validación de UI es funcional/técnica.

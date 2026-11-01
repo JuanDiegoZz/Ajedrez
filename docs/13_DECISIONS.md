@@ -161,3 +161,14 @@ Context7 consultado el 2026-10-15: `/jhlywa/chess.js`, `/websockets/ws`, `/docke
 - [Docker Compose: red](https://docs.docker.com/compose/how-tos/networking/): DNS entre servicios y puertos internos/publicados.
 
 Una consulta documental no prueba rendimiento, compatibilidad instalada ni aceptación de producto.
+
+## Iteración 3 — decisiones aplicadas
+
+- Perfil invitado permanece en memoria junto a sesión; sin cuentas ni cambios PostgreSQL. Avatar usa catálogo cerrado de seis SVG propios; predeterminado `club`.
+- Nombre/avatar pueden cambiar antes de partida, con `profileVersion`; identidad de partida y archivo queda congelada desde inicio. Nombres duplicados se permiten y se distinguen por rol/avatar.
+- `PATCH /api/session` conserva cookie/sesión. `DELETE /api/session` revoca sesión y sockets; logout en partida requiere abandono confirmado y timeout se resuelve primero. Logout repetido no altera otra sesión ni borra datos.
+- Tema sigue en `ajedrez_theme`; coordenadas se guardan en `ajedrez_preferences_v1`. Ningún ID secreto se guarda en localStorage.
+- Cross-tab usa BroadcastChannel como señal UX, no autorización; backend valida mutaciones. La interfaz usa generación de identidad para ignorar respuestas tardías.
+- Sin evidencia de evaluación humana; pruebas navegador verifican comportamiento técnico, no satisfacción.
+
+- Cookies de sesión usan nombre aleatorio por identidad y parser tolera el nombre heredado. Así una respuesta atrasada puede reponer solo su cookie revocada; la cookie nueva permanece disponible.

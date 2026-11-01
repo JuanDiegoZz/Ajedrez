@@ -2,14 +2,12 @@ import WebSocket, { WebSocketServer } from 'ws';
 import { expireDisconnectedPlayer, getGame, getGameForSession, getGameRecoveryGrace, markGameDisconnected, reconnectGamePlayer } from './games.js';
 import { expireDisconnectedHost, getRoomForSession, listRooms, markRoomDisconnected, reconnectRoomHost } from './rooms.js';
 import { createRecoveryManager, reconnectGraceMs } from './recovery.js';
-import { getSession } from './sessions.js';
+import { getSession, sessionIdFromCookieHeader } from './sessions.js';
 
 export const heartbeatIntervalMs = 10_000;
 
 function sessionIdFrom(request) {
-  const cookies = request.headers.cookie?.split(';') ?? [];
-  const value = cookies.map((cookie) => cookie.trim()).find((cookie) => cookie.startsWith('ajedrez_session='));
-  return value?.slice('ajedrez_session='.length);
+  return sessionIdFromCookieHeader(request.headers.cookie);
 }
 
 function send(socket, message) {
@@ -145,6 +143,7 @@ export function attachLobby(server, {
       webSocket.on('close', () => {
         clients.delete(webSocket);
         if (controlSockets.get(session.id) !== webSocket) return;
+        if (!getSession(session.id)) return;
         controlSockets.delete(session.id);
         if (getRoomForSession(session) || getGameForSession(session.id)) recovery.disconnect(session.id);
       });
@@ -155,6 +154,7 @@ export function attachLobby(server, {
       recovery.reconnect(session.id);
       webSocket.on('message', (data) => {
         if (controlSockets.get(session.id) !== webSocket) return;
+        if (!getSession(session.id)) { revokeSession(session.id); return; }
         let message;
         try { message = JSON.parse(data.toString()); } catch { message = null; }
         if (message?.type === 'lobby:subscribe') {
@@ -202,5 +202,24 @@ export function attachLobby(server, {
     }
   }
 
-  return { webSocketServer, broadcast, broadcastGame, close: cleanup };
+  function broadcastProfile(session) {
+    const client = controlSockets.get(session.id);
+    if (client?.readyState === WebSocket.OPEN) send(client, { type: 'session:state', profile: { name: session.name, avatarId: session.avatarId ?? 'club', profileVersion: session.profileVersion ?? 0, kind: 'guest' } });
+  }
+
+  function revokeSession(sessionId) {
+    recovery.cancel(sessionId);
+    const socket = controlSockets.get(sessionId);
+    if (socket) {
+      controlSockets.delete(sessionId);
+      const client = clients.get(socket);
+      if (client?.gameId) send(socket, { type: 'session:revoked', reason: 'logout' });
+      clients.delete(socket);
+      socket.close(4002, 'Session revoked');
+    }
+  }
+
+  function cancelRecovery(sessionId) { return recovery.cancel(sessionId); }
+
+  return { webSocketServer, broadcast, broadcastGame, broadcastProfile, revokeSession, cancelRecovery, close: cleanup };
 }
