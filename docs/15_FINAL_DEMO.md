@@ -103,3 +103,12 @@ Obtener la dirección correcta del adaptador Wi-Fi/Ethernet con `ipconfig`; usar
 - Bot con estrategia y dificultad fijas, deliberadamente sencillo.
 - No se realizó una evaluación comparativa formal con aproximadamente cinco participantes. Por tanto, no se presentan métricas humanas cuantitativas de eficacia, eficiencia o satisfacción posteriores al rediseño.
 - El protocolo para una posible evaluación posterior está en `11_TESTING_AND_UX_EVALUATION.md`.
+
+## Iteración 2 — demostración de relojes
+
+- Crear sala y seleccionar 3+0, 5+0 o 10+5; confirmar control antes de unirse.
+- Mostrar turno de blancas, ambos relojes, movimiento legal, cambio de reloj activo y piezas capturadas.
+- Repetir en modo bot; explicar que el bot también consume tiempo.
+- Mostrar pausa por desconexión y recuperación si el entorno de demo lo permite.
+- Mostrar historial SAN con SVG, resumen final y descarga PGN.
+- Aclarar que timeout con imposibilidad de mate usa política aproximada, no arbitraje FIDE integral.

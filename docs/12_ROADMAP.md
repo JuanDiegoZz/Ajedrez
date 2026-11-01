@@ -1,8 +1,14 @@
 ﻿# 12 — Roadmap y criterio de terminado
 
-## Regla de ejecución
+## Iteración 2 — Experiencia de partida y ajedrez competitivo
 
-Fase 0 termina con revisión humana. No iniciar fase 1 hasta aprobación explícita de especificación, propuestas de `13` y autorización de implementación. Después implementar una fase por encargo; actualizar `14` y detenerse al cerrar cada fase. No generar ahora código, manifiestos ni migraciones.
+**Implementada técnicamente — 2026-11-01; pendiente de revisión del equipo.** Incluye relojes autoritativos, controles, timeout, snapshots, pausa con presupuesto acumulado de reconexión, bot, selector, relojes visuales, historial SVG, capturas, resumen y PGN. La migración aditiva preserva partidas históricas. Evidencia y límites están en `14`.
+
+No se hizo una nueva evaluación con participantes. La validación técnica no equivale a prueba UX humana ni conformidad FIDE completa.
+
+## Regla de ejecución del roadmap original
+
+Esta regla describe las fases originales 0–9, cerradas antes de la Iteración 2. La Iteración 2 tuvo autorización explícita el 2026-11-01 y se implementó aparte; una fase posterior requiere revisión del equipo.
 
 La progresión integra reglas con tablero y accesibilidad desde su primera aparición. No pospone legalidad hasta después de un tablero engañosamente funcional, ni errores y reconexión hasta después de llamar terminado al multijugador.
 

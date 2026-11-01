@@ -113,6 +113,19 @@ Las fechas históricas de ADR-001/002 no estaban documentadas y no se inventan. 
 - Recursos: Cburnett de Lichess bajo GPL-2.0-or-later según su registro de licencias; Newsreader bajo SIL OFL 1.1. Se incluyen fuentes vectoriales sin modificar, licencias completas y atribución en `frontend/public/assets/CREDITS.txt`.
 - Consecuencia: recursos disponibles en LAN sin CDN; las piezas siguen siendo presentación del snapshot autoritativo, sin lógica de reglas añadida.
 
+### ADR-018 — Relojes autoritativos y controles de tiempo
+
+- Estado: aceptada para Iteración 2 mediante autorización de implementación, 2026-11-01.
+- Decisión: usar controles cerrados 3+0, 5+0, 10+5 y unlimited. React propone 5+0; solicitudes antiguas sin campo de control siguen siendo unlimited.
+- Decisión: Node usa performance.now() y deadlines por turno. Un movimiento legal descuenta el tiempo y luego entrega el incremento; selección y promoción no detienen el reloj. Un movimiento al deadline ya perdió.
+- Decisión: PostgreSQL añade time_control, white_remaining_ms y black_remaining_ms nullable. La migración preserva filas antiguas con esos valores en NULL.
+- Decisión: un timeout usa una política aproximada por material y color. Registra timeout o timeout_insufficient_material; no promete arbitraje exacto FIDE 6.9.
+- Decisión: una desconexión pausa los relojes y consume un presupuesto acumulado de recuperación de 60 segundos por jugador. La presencia conserva la política LAN casual existente.
+- Razón: ofrecer duración visible y resultado compartido sin hacer al navegador autoridad ni enviar ticks por WebSocket.
+- Consecuencia: los snapshots llevan stateVersion, saldos, turno activo y fase. El cliente interpola localmente; al volver a conectar pide snapshot nuevo.
+- Límite: reloj activo en memoria; reiniciar Node sigue perdiendo partidas no archivadas. La política de material no clasifica todas las posiciones excepcionales.
+- Referencia: [Leyes FIDE vigentes desde 2023, artículo 6.9](https://handbook.fide.com/chapter/e012023) define la tabla por imposibilidad de mate mediante cualquier serie legal; esta implementación aproxima esa evaluación por material.
+
 ## Propuestas para revisión humana
 
 Las propuestas restantes tienen fecha **2026-10-15**. ADR-003 se aceptó para Fase 2; ADR-004, 006 y 007 para Fase 4; ADR-005 y ADR-008 para Fase 3; ADR-009 para Fase 7; ADR-013 y ADR-015 para Fase 6.

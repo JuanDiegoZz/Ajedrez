@@ -27,8 +27,11 @@ ajedrez/
 │   │   ├── lobby.js
 │   │   ├── recovery.js
 │   │   ├── games.js
+│   │   ├── game-clock.js
+│   │   ├── timeout-result.js
 │   │   ├── bot.js
-│   │   └── game-archive.js
+│   │   ├── game-archive.js
+│   │   └── game-archive-migration.js
 │   └── test/
 │       ├── sessions.test.js
 │       ├── rooms.test.js
@@ -39,7 +42,10 @@ ajedrez/
 │       ├── bot.test.js
 │       ├── recovery.test.js
 │       ├── recovery-ws.test.js
-│       └── game-archive.test.js
+│       ├── game-archive.test.js
+│       ├── game-archive-migration.test.js
+│       ├── game-clock.test.js
+│       └── timeout-result.test.js
 ├── frontend/
 │   ├── Dockerfile
 │   ├── nginx.conf

@@ -369,3 +369,15 @@ Solo los siguientes 25 archivos Markdown:
 - setup/VERIFY_TOOLS.md
 
 AGENTS.md sigue siendo la fuente de reglas del agente. No se modificaron su contenido, el script auxiliar ni el ejemplo de configuración.
+
+## Iteración 2 — relojes y experiencia de partida — 2026-11-01
+
+- Implementación técnica en rama `feat/revision-2-relojes`; pendiente de revisión del equipo. Sin commit ni push.
+- Controles 3+0, 5+0, 10+5 y `unlimited`; interfaz propone 5+0. Backend usa `performance.now()`, deadlines y una transición compartida para humano/bot. El incremento ocurre solo tras jugada legal. Exactamente al deadline cuenta como timeout.
+- Timeout termina una vez, congela ambos saldos y archiva `timeout` o `timeout_insufficient_material`. La heurística material por color contempla rey solo, material mayor, menores, caballos y alfiles; es aproximada, no árbitro exacto FIDE 6.9.
+- Snapshots incluyen `stateVersion`, estado de reloj, presencia, tiempo y recuperación. Cliente interpola sin publicar ticks ni decidir ganador. Desconexión pausa reloj y consume saldo acumulado máximo de 60 s por jugador. Bot consume tiempo y se invalida al pausar/terminar.
+- UI incluye control al crear sala/partida bot, relojes, alerta de desconexión, historial SVG/SAN, capturas, resultados y PGN. No se realizó prueba con usuarios en esta iteración.
+- Respaldo lógico preexistente verificado por SHA-256: `607F1EB2BC4FCD19ABB35807171DC5C2A6AFDF755E1ACD38B666AFBB087E6004`. Migración probada dos veces en restore aislado y aplicada dos veces en desarrollo. Permanecen 65 partidas, 220 movimientos, 17 interrumpidas; 0 referencias rotas; no se rellenaron saldos históricos.
+- `backend npm test`: 81/81 tras los cambios finales. `frontend npm run build`: correcto. `docker compose config --quiet` y `docker compose up -d --build`: correctos. PostgreSQL healthy y `/api/health`: backend/database available. En DB de desarrollo se confirmaron 65 partidas, 220 movimientos, 17 interrumpidas, 0 referencias rotas y 65 históricas con control NULL.
+- Playwright: selector 5+0 predeterminado, sala con 10+5, partida bot 5+0, jugada e2–e4 y respuesta automática del bot; snapshot mostró dos relojes, historial SAN con SVG y turnos alternos. En 1440/1024/768/390/320 px no hubo desbordamiento horizontal. Contexto limpio: consola sin errores.
+- PGN exporta solo partidas terminadas, con metadatos básicos. No incluye tiempos por jugada, pues el historial de reloj no se persiste por movimiento.

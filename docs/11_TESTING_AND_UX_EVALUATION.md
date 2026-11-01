@@ -90,3 +90,7 @@ SUS queda opcional solo si lo solicita la asignatura, con cuestionario y cálcul
 6. Comparar n/N, tiempos, acciones, errores y satisfacción por tarea; adjuntar observaciones que expliquen diferencias. Si no mejora, documentarlo y reconsiderar diseño.
 
 Las metas UX orientan cierre; si no se alcanzan, se requiere otra iteración o aceptación explícita de la desviación. No se declara proyecto terminado ocultando tareas fallidas.
+
+## Iteración 2 — reloj, estado y exportación
+
+Backend usa reloj inyectable para cubrir deadline exacto, callback obsoleto, demora, pausas, incrementos, duplicados, promoción, timeout y worker tardío sin esperar minutos reales. Se prueba migración repetida en esquema histórico restaurado y reintentos transaccionales de archivo. Las pruebas frontend manuales deben registrar navegador, tamaños, temas y errores; no convertir pruebas técnicas en evaluación humana.

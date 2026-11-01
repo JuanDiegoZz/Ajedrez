@@ -56,6 +56,14 @@ Clave primaria compuesta `(game_id, ply)` impide duplicados. Sin ID adicional, a
 
 ## Guardado y fallos
 
+### Extensión Iteración 2
+
+La migración agrega a games time_control text, white_remaining_ms bigint y black_remaining_ms bigint. Los tres permiten NULL para conservar registros anteriores sin inventar duración ni saldos. Las partidas nuevas guardan el identificador del preset; partidas unlimited guardan saldos NULL; partidas cronometradas guardan los dos saldos finales no negativos.
+
+end_reason admite además timeout y timeout_insufficient_material. El segundo exige resultado de tablas. La migración identifica las restricciones por definición leída del catálogo, amplía solo las expresiones reconocidas y se ejecuta en una transacción repetible. Un esquema distinto detiene y revierte la migración.
+
+El snapshot en memoria conserva también metadatos estructurados por jugada (color, pieza movida, SAN, captura, pieza capturada, promoción, jaque, mate y enroque). La tabla moves no cambia: comparación de reintentos y contrato histórico continúan usando origen, destino, promoción y SAN.
+
 1. Finalizar lógicamente una sola vez y comunicar resultado antes de depender de la base de datos.
 2. Insertar games y todos sus moves en una sola transacción. Nunca un registro parcial.
 3. ID de partida estable; reintentar mismo contenido es idempotente. Conflicto con contenido distinto es error, no sobrescritura silenciosa.

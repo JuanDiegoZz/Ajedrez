@@ -1,3 +1,5 @@
+import { migrateGameArchiveSchema } from './game-archive-migration.js';
+
 const gameTable = `
   CREATE TABLE IF NOT EXISTS games (
     id uuid PRIMARY KEY,
@@ -27,11 +29,15 @@ const movesTable = `
 export async function initializeGameArchive(pool) {
   await pool.query(gameTable);
   await pool.query(movesTable);
+  await migrateGameArchiveSchema(pool);
 }
 
 function sameGame(row, game) {
   return row.mode === game.mode && row.white_name === game.whiteName && row.black_name === game.blackName
     && row.result === game.result && row.end_reason === game.endReason && row.final_fen === game.finalFen
+    && row.time_control === game.timeControl
+    && (row.white_remaining_ms === null ? null : Number(row.white_remaining_ms)) === game.whiteRemainingMs
+    && (row.black_remaining_ms === null ? null : Number(row.black_remaining_ms)) === game.blackRemainingMs
     && new Date(row.started_at).getTime() === new Date(game.startedAt).getTime()
     && new Date(row.finished_at).getTime() === new Date(game.finishedAt).getTime();
 }
@@ -43,9 +49,10 @@ export async function archiveFinishedGame(pool, game) {
     await client.query('BEGIN');
     transaction = true;
     const inserted = await client.query(
-      `INSERT INTO games (id, mode, white_name, black_name, result, end_reason, final_fen, started_at, finished_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (id) DO NOTHING RETURNING id`,
-      [game.id, game.mode, game.whiteName, game.blackName, game.result, game.endReason, game.finalFen, game.startedAt, game.finishedAt],
+      `INSERT INTO games (id, mode, white_name, black_name, result, end_reason, final_fen, started_at, finished_at, time_control, white_remaining_ms, black_remaining_ms)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (id) DO NOTHING RETURNING id`,
+      [game.id, game.mode, game.whiteName, game.blackName, game.result, game.endReason, game.finalFen, game.startedAt, game.finishedAt,
+        game.timeControl, game.whiteRemainingMs, game.blackRemainingMs],
     );
     if (inserted.rows.length === 0) {
       const existing = await client.query('SELECT * FROM games WHERE id = $1', [game.id]);

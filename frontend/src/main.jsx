@@ -47,6 +47,8 @@ function App() {
   const [roomAction, setRoomAction] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [roomName, setRoomName] = useState('');
+  const [roomTimeControl, setRoomTimeControl] = useState('5+0');
+  const [botTimeControl, setBotTimeControl] = useState('5+0');
   const dialogRef = useRef(null);
   const createOpenerRef = useRef(null);
   const currentRoomRef = useRef(null);
@@ -71,6 +73,9 @@ function App() {
 
   function changeCurrentGame(game) {
     const known = currentGameRef.current;
+    if (game && known?.id === game.id && (game.stateVersion ?? game.revision) < (known.stateVersion ?? known.revision)) return;
+    if (game && known?.id === game.id && (game.stateVersion ?? game.revision) === (known.stateVersion ?? known.revision)
+      && (game.clock?.sampledAt ?? 0) < (known.clock?.sampledAt ?? 0)) return;
     // HTTP can arrive after WebSocket has already confirmed the archive.
     if (game && known?.id === game.id && known.revision === game.revision
       && known.archiveStatus === 'saved' && game.archiveStatus === 'pending') return;
@@ -159,9 +164,9 @@ function App() {
         }
       });
 
-    function subscribeToGame(gameId) {
+    function subscribeToGame(gameId, force = false) {
       if (!gameId || socket?.readyState !== WebSocket.OPEN) return;
-      if (gameSubscriptionRef.current.socket === socket && gameSubscriptionRef.current.id === gameId) return;
+      if (!force && gameSubscriptionRef.current.socket === socket && gameSubscriptionRef.current.id === gameId) return;
       gameSubscriptionRef.current = { socket, id: gameId };
       socket.send(JSON.stringify({ type: 'game:subscribe', gameId }));
     }
@@ -221,8 +226,11 @@ function App() {
           const known = currentGameRef.current;
           if ((message.game.mode === 'bot' && currentGameRef.current?.id === message.game.id)
             || currentRoomRef.current?.gameId === message.game.id) {
-            if (!known || known.id !== message.game.id || message.game.revision > known.revision
-              || (message.game.revision === known.revision && (message.game.archiveStatus !== known.archiveStatus
+            const nextVersion = message.game.stateVersion ?? message.game.revision;
+            const currentVersion = known?.stateVersion ?? known?.revision;
+            if (!known || known.id !== message.game.id || nextVersion > currentVersion
+              || (nextVersion === currentVersion && (message.game.clock?.sampledAt > (known.clock?.sampledAt ?? 0)
+                || message.game.archiveStatus !== known.archiveStatus
                 || message.game.paused !== known.paused
                 || message.game.botThinking !== known.botThinking || message.game.botError !== known.botError
                 || message.game.presence?.white?.status !== known.presence?.white?.status
@@ -262,8 +270,15 @@ function App() {
     }
 
     connect();
+    function onVisible() {
+      if (document.visibilityState === 'visible') {
+        subscribeToGame(currentRoomRef.current?.gameId ?? currentGameRef.current?.id, true);
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       active = false;
+      document.removeEventListener('visibilitychange', onVisible);
       clearTimeout(retryTimer);
       clearTimeout(connectionNoticeTimer);
       if (socketRef.current === socket) socketRef.current = null;
@@ -348,7 +363,7 @@ function App() {
     event.preventDefault();
     if (!roomNameValid || roomAction) return;
     const created = await roomRequest('/api/rooms', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: cleanRoomName }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: cleanRoomName, timeControl: roomTimeControl }),
     }, 'create', 'Sala creada.');
     if (created) setCreateOpen(false);
   }
@@ -359,7 +374,9 @@ function App() {
     setRoomError('');
     setRoomMessage('');
     try {
-      const response = await fetch('/api/games/bot', { method: 'POST' });
+      const response = await fetch('/api/games/bot', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ timeControl: botTimeControl }),
+      });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message || 'No se pudo iniciar la partida contra bot.');
       changeCurrentRoom(null);
@@ -440,6 +457,13 @@ function App() {
             <p className="eyebrow">Tu próxima jugada</p>
             <h2 id="welcome-title">Hola, {session.name}</h2>
             <p className="description">Crea una sala o únete a alguien que esté esperando.</p>
+            <div className="time-control-field">
+              <label htmlFor="bot-time-control">Control de tiempo contra bot</label>
+              <select id="bot-time-control" value={botTimeControl} onChange={(event) => setBotTimeControl(event.target.value)}>
+                <option value="3+0">3+0 · 3 minutos</option><option value="5+0">5+0 · 5 minutos</option>
+                <option value="10+5">10+5 · 10 minutos + 5 segundos</option><option value="unlimited">Sin reloj</option>
+              </select>
+            </div>
             {roomMessage && <p className="success-message" role="status">{roomMessage}</p>}
             <div className="mode-actions">
               <button className="mode-card mode-human" type="button" aria-label="Crear sala" disabled={Boolean(roomAction)} onClick={(event) => {
@@ -478,7 +502,7 @@ function App() {
             {roomsStatus === 'ready' && rooms.length > 0 && <ul className="room-list">
               {rooms.map((room) => <li className="room-card" key={room.id}>
                 <span className="room-card-mark" aria-hidden="true"><Piece type="k" color="black" /></span>
-                <div className="room-card-copy"><h3>{room.name}</h3><p>Anfitrión: {room.hostName}</p><p className="room-availability"><span className="occupancy">{room.players} / 2</span> Esperando jugador</p></div>
+                <div className="room-card-copy"><h3>{room.name}</h3><p>Anfitrión: {room.hostName}</p><p className="room-availability"><span className="occupancy">{room.players} / 2</span> Esperando jugador · {room.timeControl === 'unlimited' ? 'Sin reloj' : room.timeControl}</p></div>
                 <button className="primary-button" type="button" disabled={Boolean(roomAction)} onClick={() => roomRequest(
                   `/api/rooms/${encodeURIComponent(room.id)}/join`, { method: 'POST' }, 'join', 'Te uniste a la sala.',
                 )}>{roomAction === 'join' ? 'Uniéndote…' : 'Unirse'}</button>
@@ -493,7 +517,7 @@ function App() {
         && (currentGame.mode === 'bot' || currentRoom?.gameId === currentGame.id) && (
         <GameScreen game={currentGame} room={currentRoom} session={session} connection={connection}
           onGameChange={(game) => {
-            if (game.id === currentGameRef.current?.id && game.revision >= currentGameRef.current.revision) changeCurrentGame(game);
+            if (game.id === currentGameRef.current?.id && (game.stateVersion ?? game.revision) >= (currentGameRef.current.stateVersion ?? currentGameRef.current.revision)) changeCurrentGame(game);
           }}
           onReturnToLobby={async () => {
             const path = currentGame.mode === 'bot'
@@ -513,6 +537,7 @@ function App() {
           <div className="waiting-emblem" aria-hidden="true"><Piece type="k" /></div>
           <p className="eyebrow">Tu mesa está preparada</p>
           <h2 id="room-title">{currentRoom.name}</h2>
+          <p className="description">Control de tiempo: {currentRoom.timeControl === 'unlimited' ? 'Sin reloj' : currentRoom.timeControl}</p>
           <p className="connection-status" role="status">{currentRoom.connection?.status === 'disconnected'
             ? 'Conexión perdida. Intentando recuperar esta sala…'
             : connection === 'expired'
@@ -551,6 +576,11 @@ function App() {
           <label htmlFor="room-name">Nombre de la sala</label>
           <input id="room-name" name="roomName" value={roomName} maxLength={48} autoFocus aria-describedby="room-name-help" onChange={(event) => setRoomName(event.target.value)} />
           <p id="room-name-help" className="field-help">Escribe entre 2 y 40 caracteres.</p>
+          <label htmlFor="room-time-control">Control de tiempo</label>
+          <select id="room-time-control" value={roomTimeControl} onChange={(event) => setRoomTimeControl(event.target.value)}>
+            <option value="3+0">3+0 · 3 minutos</option><option value="5+0">5+0 · 5 minutos</option>
+            <option value="10+5">10+5 · 10 minutos + 5 segundos</option><option value="unlimited">Sin reloj</option>
+          </select>
           {roomError && <p className="form-error" role="alert">{roomError}</p>}
           <div className="actions">
             <button className="secondary-button" type="button" disabled={Boolean(roomAction)} onClick={() => setCreateOpen(false)}>Cancelar</button>

@@ -41,3 +41,12 @@ test('stop clears pending recovery timers', async () => {
   await wait(35);
   assert.deepEqual(events, []);
 });
+
+test('a reconnect at or after its deadline expires instead of restoring the session', () => {
+  const events = [];
+  const recovery = createRecoveryManager({ graceMs: 0, onExpire: (...values) => events.push(values) });
+  const deadline = recovery.disconnect('session-deadline');
+  assert.equal(recovery.reconnect('session-deadline'), false);
+  assert.deepEqual(events, [['session-deadline', deadline]]);
+  recovery.stop();
+});

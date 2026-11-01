@@ -59,6 +59,14 @@ Backend monolítico pequeño: módulos de sesiones, salas, partidas, bot y persi
 
 No son APIs de una librería. Rutas y tipos exactos se fijan dentro de la fase correspondiente, conservando estas responsabilidades. HTTP y WebSocket llaman al mismo servicio; no duplicar validación.
 
+## Iteración 2 — reloj y proyección visual
+
+Node mantiene para cada partida cronometrada dos saldos, color activo, fase y deadline monotónico. No usa setInterval para llevar el reloj ni transmite ticks. El motor de reloj invalida callbacks viejos por generación; la transición de jugada humana y del bot pasa por el mismo commit temporal.
+
+Los snapshots conservan revision para la posición y añaden stateVersion para reloj, presencia y archivo. Incluyen control de tiempo, saldo de cada color, jugador activo y fase. El frontend acepta solo versiones iguales o más nuevas y estima el recorrido del snapshot para dibujar el reloj; esa interpolación nunca decide el resultado.
+
+Las partidas terminadas pueden descargarse como PGN generado desde historial validado por chess.js; PostgreSQL mantiene el historial SAN y la forma de movimiento histórica.
+
 ## Identidad temporal
 
 Nombre público separado de ID aleatorio secreto de sesión. Cookie HttpOnly del mismo origen, SameSite y sin token en URL. La sesión vive en memoria; cierre de navegador no garantiza abandono inmediato, por eso existe plazo de gracia. Expirar sesiones inactivas sin partida tras 2 horas; una sesión con partida no expira por inactividad de movimientos. Tras terminar y volver al lobby se vuelve a contar inactividad. Una conexión controladora por sesión: una segunda pestaña reemplaza la anterior y muestra aviso en ella. Pruebas de dos jugadores usan contextos de navegador separados.

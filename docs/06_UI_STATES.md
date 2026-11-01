@@ -73,3 +73,11 @@ Iteración autorizada de club moderno: marfil, tinta y latón; tablero protagoni
 Ofrecer únicamente tema claro y oscuro, sin catálogo de temas. Preferencia local; seguir `prefers-color-scheme` antes de elegirla. No agregar catálogo de componentes, iconografía ornamental ni tokens avanzados. Los criterios accesibles de `02` prevalecen sobre las decisiones de color.
 
 Piezas Cburnett SVG y Newsreader se distribuyen localmente; fuentes y licencias en [créditos](../frontend/public/assets/CREDITS.txt). Las casillas conservan su nombre accesible; las imágenes son decorativas para evitar anuncios duplicados. Los SVG sustituyen glifos dependientes de la fuente del sistema.
+
+## Iteración 2 — reloj en la pantalla de partida
+
+- Reloj de cada color junto a su jugador; turno activo visible además del color.
+- Menos de 10 s muestra décimas; urgencia combina estilo y texto accesible.
+- Pausa por desconexión explica estado y recuperación disponible.
+- El cliente interpola sin declarar timeout. Resultado final solo llega del servidor.
+- En móvil, conservar tablero protagonista y relojes junto a los jugadores; evitar scroll horizontal.

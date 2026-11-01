@@ -45,7 +45,7 @@ test('broadcasts each confirmed game snapshot to both subscribed players', async
   const host = await enter(base, 'Alex');
   const guest = await enter(base, 'Sam');
   const created = await request(base, '/api/rooms', host.cookie, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Prueba WS' }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Prueba WS', timeControl: '10+5' }),
   });
   const room = (await created.json()).room;
   const joined = await request(base, `/api/rooms/${room.id}/join`, guest.cookie, { method: 'POST' });
@@ -58,6 +58,9 @@ test('broadcasts each confirmed game snapshot to both subscribed players', async
     socket.send(JSON.stringify({ type: 'game:subscribe', gameId: game.id }));
     const snapshot = await nextGameState(socket);
     assert.equal(snapshot.revision, 0);
+    assert.equal(snapshot.stateVersion, 0);
+    assert.equal(snapshot.timeControl, '10+5');
+    assert.equal(snapshot.clock.runningColor, 'white');
     assert.equal(snapshot.you, player === host ? 'white' : 'black');
   }
   const updates = sockets.map(nextGameState);
@@ -72,4 +75,7 @@ test('broadcasts each confirmed game snapshot to both subscribed players', async
     'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
   ]);
   assert.deepEqual(snapshots.map((snapshot) => snapshot.revision), [1, 1]);
+  assert.deepEqual(snapshots.map((snapshot) => snapshot.stateVersion), [1, 1]);
+  assert.deepEqual(snapshots.map((snapshot) => snapshot.clock.runningColor), ['black', 'black']);
+  assert.ok(snapshots.every((snapshot) => snapshot.clock.whiteMs > 604_000 && snapshot.clock.whiteMs <= 605_000));
 });

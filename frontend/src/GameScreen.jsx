@@ -30,22 +30,67 @@ function resultText(game) {
     checkmate: 'jaque mate', stalemate: 'ahogado', insufficient_material: 'material insuficiente',
     repetition: 'repetición', fifty_moves: 'regla de cincuenta movimientos', resignation: 'abandono',
     disconnect: 'desconexión', interrupted: 'interrupción por pérdida de conexión',
-  }[result.reason] ?? 'tablas';
+    timeout: 'tiempo agotado', timeout_insufficient_material: 'tiempo agotado sin material suficiente para dar mate',
+  }[result.reason];
   if (result.reason === 'interrupted') return 'Partida interrumpida por pérdida de conexión. No hubo ganador.';
+  if (!reason) return 'Partida terminada. Motivo: ' + result.reason + '.';
   if (!result.winner) return `Partida en tablas por ${reason}.`;
   const color = result.winner === 'white' ? 'white' : 'black';
   const winner = color === 'white' ? game.white.name : game.black.name;
   return `Partida terminada por ${reason}. ${color === game.you ? 'Ganaste.' : 'Perdiste.'} Ganó ${winner} con las ${color === 'white' ? 'blancas' : 'negras'}.`;
 }
 
-function MoveHistory({ history }) {
+function MoveHistory({ moves, history }) {
+  const entries = moves?.length ? moves : history.map((san, index) => ({
+    color: index % 2 ? 'black' : 'white', san, piece: null,
+  }));
   const turns = [];
-  for (let index = 0; index < history.length; index += 2) {
-    turns.push({ number: index / 2 + 1, white: history[index], black: history[index + 1] });
+  for (let index = 0; index < entries.length; index += 2) {
+    turns.push({ number: index / 2 + 1, white: entries[index], black: entries[index + 1] });
   }
   return <ol className="move-history" aria-label="Historial de movimientos">
-    {turns.map((turn) => <li key={turn.number}><span>{turn.number}.</span><strong>{turn.white}</strong><strong>{turn.black ?? '—'}</strong></li>)}
+    {turns.map((turn) => <li key={turn.number}><span>{turn.number}.</span>
+      {[turn.white, turn.black].map((move, index) => <strong key={index} className="move-entry"
+        aria-label={move ? (move.color === 'white' ? 'Blancas' : 'Negras') + ', ' + (names[move.piece] ?? 'pieza') + ', ' + move.san
+          + (move.capture ? ', captura ' + names[move.captured] : '') + (move.check ? ', jaque' : '')
+          + (move.mate ? ', mate' : '') + (move.castling ? ', enroque' : '')
+          + (move.promotion ? ', promoción a ' + names[move.promotion] : '') : 'Sin movimiento'}>
+        {move?.piece && <Piece type={move.piece} color={move.color} />}
+        <span>{move?.san ?? '—'}</span>
+        <span className="sr-only">{move ? [move.capture && 'captura', move.check && 'jaque', move.mate && 'mate',
+          move.castling && 'enroque', move.promotion && 'promoción'].filter(Boolean).join(', ') : 'Sin movimiento'}</span>
+      </strong>)}
+    </li>)}
   </ol>;
+}
+
+function formatClock(milliseconds) {
+  const value = Math.max(0, milliseconds ?? 0);
+  const seconds = Math.floor(value / 1000);
+  const base = String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0');
+  return value < 10_000 ? base + '.' + Math.floor((value % 1000) / 100) : base;
+}
+
+function ClockDisplay({ clock, color, active, localNow, receivedAt, paused }) {
+  if (!clock) return null;
+  const elapsed = active && clock.phase === 'running' ? localNow - receivedAt : 0;
+  const milliseconds = Math.max(0, clock[color === 'white' ? 'whiteMs' : 'blackMs'] - elapsed);
+  const urgent = milliseconds <= 10_000 && clock.phase === 'running';
+  const accessible = (color === 'white' ? 'Blancas, ' : 'Negras, ') + formatClock(milliseconds)
+    + (paused ? ', reloj en pausa por reconexión' : ' restantes');
+  return <span className={'player-clock' + (active ? ' clock-active' : '') + (urgent ? ' clock-urgent' : '')}
+    aria-label={accessible}>
+    <span aria-hidden="true">{formatClock(milliseconds)}</span>
+    <span className={paused ? 'clock-paused-label' : 'sr-only'}>{paused ? 'Pausa' : active ? 'En turno' : 'En espera'}</span>
+  </span>;
+}
+
+function CapturedPieces({ moves, color }) {
+  const pieces = moves.filter((move) => move.capture).map((move, index) =>
+    <Piece key={index} type={move.captured} color={color === 'white' ? 'black' : 'white'} />);
+  return pieces.length ? <div className="captured-pieces" aria-label={(color === 'white' ? 'Blancas' : 'Negras') + ' capturaron ' + pieces.length + ' piezas'}>
+    <span aria-hidden="true">Capturas</span>{pieces}
+  </div> : null;
 }
 
 export default function GameScreen({ game, room, session, connection, onGameChange, onReturnToLobby, onNewBotGame }) {
@@ -58,6 +103,8 @@ export default function GameScreen({ game, room, session, connection, onGameChan
   const [resignOpen, setResignOpen] = useState(false);
   const [focusedSquare, setFocusedSquare] = useState(null);
   const [returning, setReturning] = useState(false);
+  const [localNow, setLocalNow] = useState(() => performance.now());
+  const [receivedAt, setReceivedAt] = useState(() => performance.now());
   const boardRef = useRef(null);
   const promotionDialog = useRef(null);
   const resignDialog = useRef(null);
@@ -248,6 +295,15 @@ export default function GameScreen({ game, room, session, connection, onGameChan
   const topPlayer = otherColor === 'white' ? game.white : game.black;
   const bottomPlayer = myColor === 'white' ? game.white : game.black;
   const rivalDisconnected = game.mode !== 'bot' && game.presence?.[otherColor]?.status === 'disconnected';
+  const moves = game.moves ?? [];
+  const capturedBy = {
+    white: moves.filter((move) => move.capture && move.color === 'white'),
+    black: moves.filter((move) => move.capture && move.color === 'black'),
+  };
+  const remaining = (color) => game.clock?.[color === 'white' ? 'whiteMs' : 'blackMs'] ?? null;
+  const duration = game.startedAt && game.finishedAt
+    ? Math.max(0, Date.parse(game.finishedAt) - Date.parse(game.startedAt)) : null;
+  const formatDuration = (ms) => Math.floor(ms / 60_000) + ' min ' + Math.floor((ms % 60_000) / 1000) + ' s';
   const connectionText = {
     connected: 'Conectado', restored: 'Conexión restablecida.', connecting: 'Conectando…',
     disconnected: 'Conexión perdida. Intentando reconectar…',
@@ -255,7 +311,7 @@ export default function GameScreen({ game, room, session, connection, onGameChan
     replaced: 'Esta sesión se abrió en otra pestaña. Esta pestaña ya no controla la partida.',
   }[connection] ?? 'Conectando…';
   const turnLabel = game.status !== 'playing' ? resultText(game)
-    : game.check ? `Jaque a ${game.turn === 'white' ? 'las blancas' : 'las negras'}`
+    : game.paused ? 'Pausa por desconexión' : game.check ? `Jaque a ${game.turn === 'white' ? 'las blancas' : 'las negras'}`
       : myTurn ? 'Tu turno' : `Turno de ${game.turn === 'white' ? 'las blancas' : 'las negras'}`;
   const displayMove = (square) => {
     const fromIndex = squares.indexOf(game.lastMove?.from);
@@ -276,7 +332,10 @@ export default function GameScreen({ game, room, session, connection, onGameChan
     <section className="game-status" aria-label="Estado de la partida" data-your-turn={myTurn && game.status === 'playing'}>
     <p className="eyebrow">{game.status === 'playing' ? 'Sobre el tablero' : 'Resultado'}</p>
     {game.status === 'playing' && rivalDisconnected && <p className="presence-banner" role="status">
-      {topPlayer.name} perdió la conexión. Esperando reconexión…
+      {topPlayer.name} perdió la conexión. Los relojes están en pausa mientras se recupera.
+    </p>}
+    {game.status === 'playing' && game.paused && !rivalDisconnected && <p className="presence-banner" role="status">
+      Los relojes están en pausa. Presupuesto de recuperación restante: {Math.ceil((game.recoveryRemainingMs ?? 0) / 1000)} s.
     </p>}
     {game.status === 'playing' && <p className={`turn-indicator${game.check ? ' in-check' : ''}`} role="status" aria-live="polite">{game.check ? '⚠ ' : ''}{turnLabel}</p>}
     {game.mode === 'bot' && game.status === 'playing' && game.botThinking && <p className="presence-banner bot-thinking" role="status" aria-live="polite"><span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>El bot está pensando…</p>}
@@ -288,6 +347,10 @@ export default function GameScreen({ game, room, session, connection, onGameChan
       <h3 id="result-title">Partida terminada</h3><p>{resultText(game)}</p>
         {game.archiveStatus === 'pending' && <p>El resultado está pendiente de guardado; el servidor volverá a intentarlo.</p>}
       {game.archiveStatus === 'saved' && <p>Resultado guardado.</p>}
+      <p>Control: {game.timeControl === 'unlimited' ? 'sin reloj' : game.timeControl}.</p>
+      {game.clock && <p>Saldos finales: blancas {formatClock(remaining('white'))}; negras {formatClock(remaining('black'))}.</p>}
+      {duration !== null && <p>Duración: {formatDuration(duration)}.</p>}
+      <a className="secondary-button pgn-link" href={'/api/games/' + encodeURIComponent(game.id) + '?format=pgn'} download>Descargar PGN</a>
       {game.mode === 'bot' && <button className="primary-button" type="button" disabled={returning} onClick={async () => {
         setReturning(true);
         try {
@@ -302,7 +365,9 @@ export default function GameScreen({ game, room, session, connection, onGameChan
     <div className="your-color"><span className={`color-token ${myColor}`} aria-hidden="true" /><div><strong>Juegas con {myColor === 'white' ? 'blancas' : 'negras'}</strong><span>{session.name}</span></div></div>
     </section>
       <div className="board-column">
-        <PlayerCard player={topPlayer} color={otherColor} label={game.mode === 'bot' ? 'Bot · Negras' : otherColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === otherColor} />
+        <PlayerCard player={topPlayer} color={otherColor} label={game.mode === 'bot' ? 'Bot · Negras' : otherColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === otherColor}
+          clock={game.clock} localNow={localNow} receivedAt={receivedAt} paused={game.paused} />
+        <CapturedPieces moves={capturedBy[otherColor]} color={otherColor} />
         <p className="sr-only" id="board-help">Usa las flechas para explorar casillas. Pulsa Enter o espacio para seleccionar. Escape cancela la selección.</p>
         <div className="chess-board" role="group" aria-label={`Tablero de ajedrez, orientado para ${myColor === 'white' ? 'blancas' : 'negras'}`} aria-describedby="board-help" ref={boardRef}>
           {squares.map((square, index) => {
@@ -318,6 +383,17 @@ export default function GameScreen({ game, room, session, connection, onGameChan
               x: `${((files.indexOf(game.lastMove.to[0] === 'g' ? 'h' : 'a') - files.indexOf(square)) * 100)}%`,
               y: '0%',
             } : null;
+
+  useEffect(() => {
+    setReceivedAt(performance.now());
+    setLocalNow(performance.now());
+  }, [game.id, game.stateVersion, game.clock?.sampledAt]);
+
+  useEffect(() => {
+    if (!game.clock || game.status !== 'playing') return undefined;
+    const interval = setInterval(() => setLocalNow(performance.now()), 100);
+    return () => clearInterval(interval);
+  }, [game.id, game.status, Boolean(game.clock)]);
             const fileIndex = index % 8;
             const rankIndex = Math.floor(index / 8);
             const isDark = (files.indexOf(square[0]) + Number(square[1])) % 2 === 1;
@@ -351,13 +427,15 @@ export default function GameScreen({ game, room, session, connection, onGameChan
             </button>;
           })}
         </div>
-        <PlayerCard player={bottomPlayer} color={myColor} label={game.mode === 'bot' ? 'Tú · Blancas' : myColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === myColor} isYou />
+        <PlayerCard player={bottomPlayer} color={myColor} label={game.mode === 'bot' ? 'Tú · Blancas' : myColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === myColor} isYou
+          clock={game.clock} localNow={localNow} receivedAt={receivedAt} paused={game.paused} />
+        <CapturedPieces moves={capturedBy[myColor]} color={myColor} />
       </div>
       <aside className="game-side-panel" aria-label="Información de la partida">
         <p className="eyebrow">Jugada a jugada</p>
         <h3>Movimientos</h3>
         <div className="history-labels" aria-hidden="true"><span>#</span><span>Blancas</span><span>Negras</span></div>
-        {game.history.length ? <MoveHistory history={game.history} /> : <p>Aún no hay movimientos.</p>}
+        {game.history.length ? <MoveHistory moves={game.moves} history={game.history} /> : <p>Aún no hay movimientos.</p>}
         {game.lastMove && <p className="last-move-label">Último movimiento: {game.lastMove.san} ({game.lastMove.from} a {game.lastMove.to})</p>}
         {game.status === 'playing' && <button className="secondary-button resign-button" type="button" disabled={busy} onClick={() => setResignOpen(true)}>Abandonar partida</button>}
       </aside>
@@ -387,10 +465,11 @@ export default function GameScreen({ game, room, session, connection, onGameChan
   </section>;
 }
 
-function PlayerCard({ player, color, label, active, isYou = false }) {
+function PlayerCard({ player, color, label, active, isYou = false, clock, localNow, receivedAt, paused }) {
   return <div className={`game-player${active ? ' active-player' : ''}`}>
     <span className={`color-piece ${color}`} aria-hidden="true"><Piece type="k" color={color} /></span>
     <div><strong>{player.name}{isYou ? ' (tú)' : ''}</strong><span>{label}</span></div>
+    <ClockDisplay clock={clock} color={color} active={active} localNow={localNow} receivedAt={receivedAt} paused={paused} />
     {active && <strong className="player-turn">{isYou ? 'TU TURNO' : 'TURNO'}</strong>}
   </div>;
 }
