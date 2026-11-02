@@ -50,6 +50,8 @@ function clockHarness() {
 test('creates a public initial game with host as white and guest as black', () => {
   const game = fixture();
   assert.equal(game.status, 'playing');
+  assert.ok(Number.isFinite(game.serverNow));
+  assert.ok(Math.abs(Date.now() - game.serverNow) < 1000);
   assert.equal(game.turn, 'white');
   assert.equal(game.fen, 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
   assert.deepEqual(game.white, { name: 'Alex', avatarId: 'club' });

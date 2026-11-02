@@ -104,3 +104,7 @@ No se realizó prueba académica con estudiantes ni evaluación de satisfacción
 ## Iteración 4 — validación sonora
 
 Ejecutar node --test frontend/test/audio.test.mjs (13 pruebas). Evidencia técnica de Playwright, límites de escucha/autoplay y pruebas de UI en docs/14_PROGRESS.md; diseño en docs/15_AUDIO.md. La invocación programática no acredita escucha física ni satisfacción.
+
+## Iteración 5 — validación técnica
+
+Ejecutar npm test --prefix backend, node --test frontend/test/*.test.mjs y npm run build --prefix frontend. Playwright prueba dos contextos, caída de WebSocket nativo y red offline del navegador, recuperación, reemplazo de pestaña, logout, bot, audio y preferencias. Pruebas backend existentes usan gracia reducida para vencimiento sin esperar un minuto en cada caso. Contrastar capturas antes/después; esto no es una evaluación con participantes. Evidencia en docs/16_UX_POLISH.md.

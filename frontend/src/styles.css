@@ -375,3 +375,43 @@ select:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 .sound-preferences { margin: 1rem 0; padding: .8rem; border: 1px solid var(--line); border-radius: .4rem; }
 .sound-preferences input[type="range"] { width: 100%; accent-color: var(--gold); padding: 0; min-height: 44px; }
 .sound-preferences small { display: block; margin-top: .5rem; }
+
+/* Iteration 5: connection state belongs to the players, not a blocking dialog. */
+.connection-notice { margin: .25rem 0 .65rem; padding: .8rem 1rem; color: var(--warning); background: var(--warning-soft); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: .35rem; animation: status-arrive 180ms ease-out both; }
+.connection-notice strong { font-size: .9rem; }
+.connection-notice p { margin: .3rem 0 0; color: inherit; font-size: .8rem; line-height: 1.5; }
+.connection-returned { color: var(--success); background: var(--surface); }
+.recovery-countdown { font-variant-numeric: tabular-nums; }
+.game-player .player-presence { display: block; margin-top: .18rem; font-size: .65rem; line-height: 1.4; opacity: .9; }
+.game-player > div { min-width: 0; }
+.game-player > div > strong { overflow-wrap: anywhere; }
+.game-heading > div { min-width: 0; flex: 1; }
+.game-heading .connection-status { flex: 0 0 auto; white-space: normal; overflow-wrap: anywhere; }
+.board-column { min-width: 0; }
+.game-result { padding: .9rem; border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: .4rem; background: var(--surface-muted); animation: status-arrive 220ms ease-out both; }
+.game-result h3 { font: 600 .7rem/1.4 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .1em; margin: 0; }
+.game-result .result-outcome { margin: .25rem 0 .65rem; font: 500 2.4rem/1.1 'Newsreader', Georgia, serif; }
+.game-result[data-outcome="win"] { border-top-color: var(--success); }
+.game-result[data-outcome="loss"] { border-top-color: var(--danger); }
+.avatar-choice { position: relative; transition: border-color 140ms ease, background-color 140ms ease; }
+.avatar-choice[aria-pressed="true"]::after { content: '✓'; position: absolute; top: .2rem; right: .3rem; font-size: .75rem; font-weight: 700; color: var(--ink); }
+.player-avatar { box-shadow: 0 1px 3px rgb(0 0 0 / 14%); }
+.entry-layout, .lobby-layout, .room-view { animation: status-arrive 180ms ease-out both; }
+.player-clock.clock-urgent { animation: none; box-shadow: 0 0 0 2px rgb(255 170 160 / 20%); }
+.dialog-close { min-width: 44px; min-height: 44px; }
+@keyframes status-arrive { from { opacity: .25; } to { opacity: 1; } }
+@media (max-width: 480px) {
+  .connection-notice { padding: .7rem; }
+  .game-player .player-presence { font-size: .65rem; }
+  .game-result { padding: .75rem; }
+  .game-status { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .game-status > .your-color { min-width: 0; max-width: none; }
+  .game-status .turn-indicator { overflow-wrap: anywhere; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .connection-notice, .game-result, .entry-layout, .lobby-layout, .room-view { animation: none; }
+  .avatar-choice { transition: none; }
+}
+@media (max-width: 360px) {
+  .player-clock { min-width: 4.6rem; font-size: .95rem; }
+}

@@ -91,3 +91,7 @@ Los avatares no indican color de piezas: rol/color se muestra aparte. Coordenada
 ## Iteración 4 — sonido complementario
 
 Mi perfil incluye activar sonidos, volumen general porcentual y Probar sonido. Navegación mediante Tab/teclado, controles con label; el silencio no oculta jaque, turno, resultado ni alertas visuales. Movimiento reducido sigue independiente del audio. Refresh/reconexión no reproducen historial.
+
+## Iteración 5 — presencia y resultado
+
+Presencia junto al avatar: conectado, recuperando, estado sin actualizar o control en otra pestaña. Una sola tarjeta contextual explica pausa, pérdida local o regreso del rival; no usa modales. Texto de cambios en role=status, contador fuera de región viva para evitar anuncios cada segundo. Al vencer la cuenta, espera resultado oficial. Resultado agrega Victoria/Derrota/Tablas/Interrupción según color local. Selección de avatar añade marca visible y medallón sutil; IDs y SVG se conservan. Animaciones de entrada por opacidad, pulso continuo de urgencia sustituido por señal fija y prefers-reduced-motion respetado.

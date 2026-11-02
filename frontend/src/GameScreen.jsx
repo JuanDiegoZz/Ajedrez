@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Piece from './Piece.jsx';
 import useGameAudio from './useGameAudio.js';
+import ConnectionNotice from './ConnectionNotice.jsx';
+import { outcome, playerPresence } from './presence.js';
 import { Avatar } from './Avatar.jsx';
 
 const names = { k: 'rey', q: 'dama', r: 'torre', b: 'alfil', n: 'caballo', p: 'peón' };
@@ -110,13 +112,13 @@ export default function GameScreen({ game, room, session, connection, showCoordi
   useEffect(() => {
     setReceivedAt(performance.now());
     setLocalNow(performance.now());
-  }, [game.id, game.stateVersion, game.clock?.sampledAt]);
+  }, [game.id, game.stateVersion, game.clock?.sampledAt, game.serverNow]);
 
   useEffect(() => {
-    if (!game.clock || game.status !== 'playing') return undefined;
-    const interval = setInterval(() => setLocalNow(performance.now()), 100);
+    if ((!game.clock && !game.paused) || game.status !== 'playing') return undefined;
+    const interval = setInterval(() => setLocalNow(performance.now()), game.clock ? 100 : 1000);
     return () => clearInterval(interval);
-  }, [game.id, game.status, Boolean(game.clock)]);
+  }, [game.id, game.status, Boolean(game.clock), game.paused]);
   useGameAudio(game, connection, localNow);
   const boardRef = useRef(null);
   const promotionDialog = useRef(null);
@@ -307,7 +309,6 @@ export default function GameScreen({ game, room, session, connection, showCoordi
   const otherColor = myColor === 'white' ? 'black' : 'white';
   const topPlayer = otherColor === 'white' ? game.white : game.black;
   const bottomPlayer = myColor === 'white' ? game.white : game.black;
-  const rivalDisconnected = game.mode !== 'bot' && game.presence?.[otherColor]?.status === 'disconnected';
   const moves = game.moves ?? [];
   const capturedBy = {
     white: moves.filter((move) => move.capture && move.color === 'white'),
@@ -318,10 +319,10 @@ export default function GameScreen({ game, room, session, connection, showCoordi
     ? Math.max(0, Date.parse(game.finishedAt) - Date.parse(game.startedAt)) : null;
   const formatDuration = (ms) => Math.floor(ms / 60_000) + ' min ' + Math.floor((ms % 60_000) / 1000) + ' s';
   const connectionText = {
-    connected: 'Conectado', restored: 'Conexión restablecida.', connecting: 'Conectando…',
-    disconnected: 'Conexión perdida. Intentando reconectar…',
-    expired: 'Tiempo de recuperación agotado. Recarga para comprobar el resultado.',
-    replaced: 'Esta sesión se abrió en otra pestaña. Esta pestaña ya no controla la partida.',
+    connected: 'Conectado', restored: 'Conexión recuperada', connecting: 'Conectando…',
+    disconnected: 'Reconectando…',
+    expired: 'Sin conexión',
+    replaced: 'Otra pestaña',
   }[connection] ?? 'Conectando…';
   const turnLabel = game.status !== 'playing' ? resultText(game)
     : game.paused ? 'Pausa por desconexión' : game.check ? `Jaque a ${game.turn === 'white' ? 'las blancas' : 'las negras'}`
@@ -339,25 +340,19 @@ export default function GameScreen({ game, room, session, connection, showCoordi
   return <section className="game-screen" aria-labelledby="game-title">
     <header className="game-heading">
       <div><p className="eyebrow">Mesa de juego · {game.mode === 'bot' ? 'Contra bot' : 'Multijugador'}</p><h2 id="game-title">{game.mode === 'bot' ? 'Frente al bot' : room.name}</h2></div>
-      <p className={`connection-status ${connected ? 'connected' : 'disconnected'}`} role="status">{connectionText}</p>
+      <p className={`connection-status ${connected ? 'connected' : 'disconnected'}`} >{connectionText}</p>
     </header>
     <div className="game-layout">
     <section className="game-status" aria-label="Estado de la partida" data-your-turn={myTurn && game.status === 'playing'}>
     <p className="eyebrow">{game.status === 'playing' ? 'Sobre el tablero' : 'Resultado'}</p>
-    {game.status === 'playing' && rivalDisconnected && <p className="presence-banner" role="status">
-      {topPlayer.name} perdió la conexión. Los relojes están en pausa mientras se recupera.
-    </p>}
-    {game.status === 'playing' && game.paused && !rivalDisconnected && <p className="presence-banner" role="status">
-      Los relojes están en pausa. Presupuesto de recuperación restante: {Math.ceil((game.recoveryRemainingMs ?? 0) / 1000)} s.
-    </p>}
     {game.status === 'playing' && <p className={`turn-indicator${game.check ? ' in-check' : ''}`} role="status" aria-live="polite">{game.check ? '⚠ ' : ''}{turnLabel}</p>}
     {game.mode === 'bot' && game.status === 'playing' && game.botThinking && <p className="presence-banner bot-thinking" role="status" aria-live="polite"><span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>El bot está pensando…</p>}
     {game.mode === 'bot' && game.status === 'playing' && game.botError && <div className="presence-banner" role="alert">
       <p>El bot no pudo elegir una jugada.</p>
       <button className="secondary-button" type="button" disabled={busy} onClick={() => void retryBot()}>{busy ? 'Reintentando…' : 'Reintentar'}</button>
     </div>}
-    {game.status === 'finished' && <section className="game-result" aria-labelledby="result-title">
-      <h3 id="result-title">Partida terminada</h3><p>{resultText(game)}</p>
+    {game.status === 'finished' && <section className="game-result" data-outcome={outcome(game).key} aria-labelledby="result-title">
+      <h3 id="result-title">Partida terminada</h3><p className="result-outcome">{outcome(game).title}</p><p>{resultText(game)}</p>
         {game.archiveStatus === 'pending' && <p>El resultado está pendiente de guardado; el servidor volverá a intentarlo.</p>}
       {game.archiveStatus === 'saved' && <p>Resultado guardado.</p>}
       <p>Control: {game.timeControl === 'unlimited' ? 'sin reloj' : game.timeControl}.</p>
@@ -378,8 +373,9 @@ export default function GameScreen({ game, room, session, connection, showCoordi
     <div className="your-color"><span className={`color-token ${myColor}`} aria-hidden="true" /><div><strong>Juegas con {myColor === 'white' ? 'blancas' : 'negras'}</strong><span>{session.name}</span></div></div>
     </section>
       <div className="board-column">
-        <PlayerCard player={topPlayer} color={otherColor} label={game.mode === 'bot' ? 'Bot · Negras' : otherColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === otherColor}
+        <PlayerCard presence={playerPresence(game, otherColor, connection)} player={topPlayer} color={otherColor} label={game.mode === 'bot' ? 'Bot · Negras' : otherColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === otherColor}
           clock={game.clock} localNow={localNow} receivedAt={receivedAt} paused={game.paused} />
+        <ConnectionNotice game={game} connection={connection} elapsed={Math.max(0, localNow - receivedAt)} />
         <CapturedPieces moves={capturedBy[otherColor]} color={otherColor} />
         <p className="sr-only" id="board-help">Usa las flechas para explorar casillas. Pulsa Enter o espacio para seleccionar. Escape cancela la selección.</p>
         <div className="chess-board" role="group" aria-label={`Tablero de ajedrez, orientado para ${myColor === 'white' ? 'blancas' : 'negras'}`} aria-describedby="board-help" ref={boardRef}>
@@ -430,7 +426,7 @@ export default function GameScreen({ game, room, session, connection, showCoordi
             </button>;
           })}
         </div>
-        <PlayerCard player={bottomPlayer} color={myColor} label={game.mode === 'bot' ? 'Tú · Blancas' : myColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === myColor} isYou
+        <PlayerCard presence={playerPresence(game, myColor, connection)} player={bottomPlayer} color={myColor} label={game.mode === 'bot' ? 'Tú · Blancas' : myColor === 'white' ? 'Anfitrión · Blancas' : 'Invitado · Negras'} active={game.status === 'playing' && game.turn === myColor} isYou
           clock={game.clock} localNow={localNow} receivedAt={receivedAt} paused={game.paused} />
         <CapturedPieces moves={capturedBy[myColor]} color={myColor} />
       </div>
@@ -468,11 +464,11 @@ export default function GameScreen({ game, room, session, connection, showCoordi
   </section>;
 }
 
-function PlayerCard({ player, color, label, active, isYou = false, clock, localNow, receivedAt, paused }) {
+function PlayerCard({ presence, player, color, label, active, isYou = false, clock, localNow, receivedAt, paused }) {
   return <div className={`game-player${active ? ' active-player' : ''}`}>
     <span className={`color-piece ${color}`} aria-hidden="true"><Piece type="k" color={color} /></span>
     <Avatar id={player.avatarId ?? (label.startsWith('Bot') ? 'knight' : 'club')} label="" className="game-avatar" />
-    <div><strong>{player.name}{isYou ? ' (tú)' : ''}</strong><span>{label}</span></div>
+    <div><strong>{player.name}{isYou ? ' (tú)' : ''}</strong><span>{label}</span><span className="player-presence">{isYou ? 'Tú' : label.startsWith('Bot') ? 'Sistema' : 'Rival'} · {presence}</span></div>
     <ClockDisplay clock={clock} color={color} active={active} localNow={localNow} receivedAt={receivedAt} paused={paused} />
     {active && <strong className="player-turn">{isYou ? 'TU TURNO' : 'TURNO'}</strong>}
   </div>;

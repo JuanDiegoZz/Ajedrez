@@ -127,6 +127,7 @@ function publicGame(game, sessionId) {
   return {
     id: game.id,
     roomId: game.roomId,
+    serverNow: Date.now(),
     status: game.status,
     startedAt: game.startedAt,
     finishedAt: game.finishedAt,

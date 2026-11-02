@@ -157,6 +157,7 @@ function App() {
       setSession((current) => ({ ...current, ...result.profile }));
       try { const channel = new BroadcastChannel('ajedrez-session'); channel.postMessage({ type: 'profile', profile: result.profile }); channel.close(); } catch { /* Server remains authoritative. */ }
       if (result.room) changeCurrentRoom(result.room);
+      audio.play('move');
       setProfileMessage('Perfil actualizado.');
       setProfileOpen(false);
     } finally { if (epoch === identityEpochRef.current) setProfileBusy(false); }
@@ -495,6 +496,7 @@ function App() {
       changeCurrentRoom(result.room ?? null);
       if (result.game) changeCurrentGame(result.game);
       else if (!result.room) changeCurrentGame(null);
+      if (action === 'create' && result.room?.status === 'waiting') audio.play('move');
       setRoomMessage(successMessage);
       return true;
     } catch (error) {
@@ -552,7 +554,7 @@ function App() {
   const connectionText = {
     connected: 'Lobby conectado', restored: 'Conexión restablecida.',
     disconnected: 'Conexión perdida. Intentando reconectar…', connecting: 'Conectando al lobby…',
-    expired: 'Tiempo de recuperación agotado. Recarga para comprobar el estado.',
+    expired: 'No se pudo restablecer la conexión. Recarga para consultar el estado.',
     replaced: 'Esta sesión se abrió en otra pestaña.',
   }[connection] ?? 'Conectando al lobby…';
 
