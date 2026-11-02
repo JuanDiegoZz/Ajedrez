@@ -108,3 +108,7 @@ La app debe estar levantada y el dispositivo debe poder alcanzar el equipo anfit
 ## Sonidos de partida
 
 Mi perfil permite activar sonidos, ajustar volumen (25 % inicial) y probarlo. Se reproducen solo eventos confirmados; refrescar o reconectar no repite historial. El navegador requiere interacción para habilitar audio. Preferencias locales sobreviven al logout. Detalles y licencias: [experiencia sonora](docs/15_AUDIO.md).
+
+## Iteración 5 — claridad de partida
+
+Los paneles de jugadores distinguen presencia propia y del rival. Una pérdida detectada por el servidor muestra pausa y recuperación disponible, derivada de su plazo; al volver, un aviso breve confirma el regreso. Sustituir una pestaña no representa desconexión del rival. Victoria, derrota, tablas e interrupción conservan el resultado oficial. Guardar perfil o crear una sala confirmada usa un golpe sonoro breve con las preferencias existentes. Ver docs/16_UX_POLISH.md para evidencia y límites.

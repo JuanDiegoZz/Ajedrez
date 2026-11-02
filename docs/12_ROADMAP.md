@@ -60,3 +60,7 @@ No basta compilar. No se requiere implementar opciones de `01` para terminar.
 - [x] Logout de servidor con reglas por estado, confirmación de abandono activo, revocación WebSocket y cancelación de recuperación.
 - [x] Diálogo Mi perfil, sincronización entre pestañas y actualización de anfitrión en sala esperando.
 - [ ] Prueba académica con participantes: no realizada; no inferir aceptación humana.
+
+## Iteración 5 — pulido final
+
+Implementados indicadores de presencia, aviso contextual y recuperación derivada del servidor; confirmaciones de interfaz, resultado visual, selección de avatares y ajustes móviles. Regresión técnica documentada en docs/16_UX_POLISH.md. Revisión humana visual/auditiva y dedicación de licencia pendiente continúan separadas de la implementación.

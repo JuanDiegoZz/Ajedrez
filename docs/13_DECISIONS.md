@@ -179,3 +179,11 @@ Una consulta documental no prueba rendimiento, compatibilidad instalada ni acept
 - Síntesis procedural original: nueve WAV locales (dedicación CC0 pendiente de declaración del titular), generación reproducible. Fuentes CC0 propuestas investigadas; no se incorporaron muestras de terceros.
 - Eventos desde snapshots oficiales y movimientos estructurados; referencias silenciosas al montar, reconectar, recuperar visibilidad o sustituir socket. Resultado tiene prioridad; perspectiva por color oficial.
 - Preferencias se fusionan en ajedrez_preferences_v1 sin sobrescribir coordenadas; tema independiente. Sonidos activos al 25 %, autoplay desbloqueado por gesto.
+
+## Iteración 5 — pulido de UX aplicado
+
+- Indicadores y aviso de recuperación junto a jugadores; muestra serverNow aditiva permite interpolar plazo oficial sin confiar en hora del navegador. Sin nuevo protocolo de comandos ni política de recuperación.
+- Avisos accesibles sin anuncios del contador por segundo; resultado manda al terminar. Conexión local vencida no se presenta como pérdida reglamentaria hasta resultado Node.
+- Reutilizar move.wav solo tras confirmación HTTP de perfil y creación de sala; sin hover, selector de avatar, apertura o sonido adicional de cada botón. No hay assets ni declaraciones de licencia nuevas.
+- Conservar seis emblemas legibles; mejorar marca de selección, marco y espaciado. Priorizar cuenta clara, reloj legible y estados sobre rediseño global.
+- Sin evaluación humana, escucha física ni afirmación de conformidad ISO completa. Pendiente de licencia CC0 documentado en Iteración 4 sigue vigente.

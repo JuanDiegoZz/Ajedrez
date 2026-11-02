@@ -409,3 +409,16 @@ AGENTS.md sigue siendo la fuente de reglas del agente. No se modificaron su cont
 ## Auditoría final Iteración 4
 
 90/90 backend y 14/14 audio; build y Compose correctos. Evidencia de recursos, temporizadores, fuentes y correcciones en docs/15_AUDIO.md. Aclaración que sustituye la afirmación previa de licencia verificada: CC0 es propuesta pendiente de declaración expresa de quien tenga derechos; la generación procedural no prueba esa declaración. Estado NO APROBADA para integrar por este pendiente documental de titularidad/dedicación; verificación técnica favorable. Sin escucha física ni pruebas en móviles reales.
+
+## Iteración 5 — pulido final (2026-11-01)
+
+- Rama feat/revision-5-ux-polish creada desde main limpio y actualizado; Iteración 4 integrada. Sin commit/push/merge.
+- Presencia junto a jugadores, aviso propio/rival, regreso confirmado y contador derivado de serverNow/reconnectUntil. Solo campo de snapshot aditivo; sin cambiar reglas, reloj ni política de recuperación.
+- Resultado por perspectiva, selección de avatar más explícita, entradas por opacidad y urgencia fija. Confirmaciones de perfil/sala reutilizan golpe existente tras HTTP exitoso. Sin recursos ni licencias nuevas.
+- 90/90 backend, 17/17 frontend (audio/presencia), build correcto. Compose reconstruido y health disponible. Dos contextos reales: e4/d5/exd5, cierre de WebSocket nativo y offline del navegador, pausa oficial, cuenta 60 a 59, regreso sin jugadas/sonidos duplicados; reemplazo no pausó y logout finalizó por abandono.
+- Bot e4/a5, refresh con saldos conservados y sin sonido histórico, perfil guardado con una señal, derrota con una señal, PGN correcto y retorno al lobby. Cero intervalos visuales al finalizar.
+- Ambos temas a 1440/1024/768/390/320: sin overflow; foco restaurado por Escape, animación desactivada con movimiento reducido. Zoom CSS 200 % comprobado en diálogo. Smoke del último build a 320: clientWidth=scrollWidth=305, borde del tablero=297, reloj=15.2 px; cero errores JavaScript.
+- Limpieza limitada a cuatro partidas identificadas y cinco movimientos creados para la regresión. Verificación transaccional de contenido ajeno idéntico al limpiar las partidas con movimientos. Inventario final observado: 69 partidas/308 movimientos. Sin migración.
+- Capturas, alcance, pruebas y límites en docs/16_UX_POLISH.md. Sin evaluación con participantes, escucha física, prueba en móviles físicos ni verificación con lector de pantalla real. Licencia CC0 pendiente de titularidad de Iteración 4 sigue documentada.
+
+- Último ajuste de encabezado: estados breves sin duplicar la explicación de la tarjeta. Smoke a 320 px confirmó Conectado dentro del área útil (derecha 297, clientWidth 305).
