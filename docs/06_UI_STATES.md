@@ -87,3 +87,7 @@ Piezas Cburnett SVG y Newsreader se distribuyen localmente; fuentes y licencias 
 `Mi perfil` es diálogo modal accesible, no página. Incluye etiqueta `Jugador invitado`, nombre, seis avatares locales, preferencia de coordenadas y logout. Guardar indica progreso/éxito/error; nombre y avatares quedan bloqueados durante partida humana, partida bot y pausa. Logout activo abre confirmación con `Seguir jugando` como foco inicial. El foco vuelve al botón que abrió el diálogo.
 
 Los avatares no indican color de piezas: rol/color se muestra aparte. Coordenadas ocultas desaparecen solo visualmente; nombres accesibles y navegación de casillas continúan. Preferencias de tema y coordenadas sobreviven logout; almacenamiento local inválido o bloqueado usa defaults sin impedir jugar.
+
+## Iteración 4 — sonido complementario
+
+Mi perfil incluye activar sonidos, volumen general porcentual y Probar sonido. Navegación mediante Tab/teclado, controles con label; el silencio no oculta jaque, turno, resultado ni alertas visuales. Movimiento reducido sigue independiente del audio. Refresh/reconexión no reproducen historial.

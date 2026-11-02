@@ -172,3 +172,10 @@ Una consulta documental no prueba rendimiento, compatibilidad instalada ni acept
 - Sin evidencia de evaluación humana; pruebas navegador verifican comportamiento técnico, no satisfacción.
 
 - Cookies de sesión usan nombre aleatorio por identidad y parser tolera el nombre heredado. Así una respuesta atrasada puede reponer solo su cookie revocada; la cookie nueva permanece disponible.
+
+## Iteración 4 — decisiones de audio
+
+- Web Audio nativo, un contexto, un gain, buffers reutilizados y una fuente simultánea. Sin dependencias nuevas. Fallo de audio no afecta juego.
+- Síntesis procedural original: nueve WAV locales (dedicación CC0 pendiente de declaración del titular), generación reproducible. Fuentes CC0 propuestas investigadas; no se incorporaron muestras de terceros.
+- Eventos desde snapshots oficiales y movimientos estructurados; referencias silenciosas al montar, reconectar, recuperar visibilidad o sustituir socket. Resultado tiene prioridad; perspectiva por color oficial.
+- Preferencias se fusionan en ajedrez_preferences_v1 sin sobrescribir coordenadas; tema independiente. Sonidos activos al 25 %, autoplay desbloqueado por gesto.

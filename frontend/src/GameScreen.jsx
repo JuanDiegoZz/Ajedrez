@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Piece from './Piece.jsx';
+import useGameAudio from './useGameAudio.js';
 import { Avatar } from './Avatar.jsx';
 
 const names = { k: 'rey', q: 'dama', r: 'torre', b: 'alfil', n: 'caballo', p: 'peón' };
@@ -106,6 +107,17 @@ export default function GameScreen({ game, room, session, connection, showCoordi
   const [returning, setReturning] = useState(false);
   const [localNow, setLocalNow] = useState(() => performance.now());
   const [receivedAt, setReceivedAt] = useState(() => performance.now());
+  useEffect(() => {
+    setReceivedAt(performance.now());
+    setLocalNow(performance.now());
+  }, [game.id, game.stateVersion, game.clock?.sampledAt]);
+
+  useEffect(() => {
+    if (!game.clock || game.status !== 'playing') return undefined;
+    const interval = setInterval(() => setLocalNow(performance.now()), 100);
+    return () => clearInterval(interval);
+  }, [game.id, game.status, Boolean(game.clock)]);
+  useGameAudio(game, connection, localNow);
   const boardRef = useRef(null);
   const promotionDialog = useRef(null);
   const resignDialog = useRef(null);
@@ -385,16 +397,6 @@ export default function GameScreen({ game, room, session, connection, showCoordi
               y: '0%',
             } : null;
 
-  useEffect(() => {
-    setReceivedAt(performance.now());
-    setLocalNow(performance.now());
-  }, [game.id, game.stateVersion, game.clock?.sampledAt]);
-
-  useEffect(() => {
-    if (!game.clock || game.status !== 'playing') return undefined;
-    const interval = setInterval(() => setLocalNow(performance.now()), 100);
-    return () => clearInterval(interval);
-  }, [game.id, game.status, Boolean(game.clock)]);
             const fileIndex = index % 8;
             const rankIndex = Math.floor(index / 8);
             const isDark = (files.indexOf(square[0]) + Number(square[1])) % 2 === 1;

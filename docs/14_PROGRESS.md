@@ -393,3 +393,19 @@ AGENTS.md sigue siendo la fuente de reglas del agente. No se modificaron su cont
 - Viewport lobby/dialog: 1440, 1024, 768, 390 y 320 px, `scrollWidth == clientWidth`; sin overflow horizontal. Consola sin errores en el flujo normal; la prueba de sesión revocada observó HTTP 410 esperado al validar una cookie obsoleta.
 - Inventario PostgreSQL antes/después de pruebas de Iteración 3: 66 partidas, 222 movimientos, 17 interrumpidas. Sin filas de prueba añadidas ni migración.
 - No se realizó evaluación con participantes; evidencia anterior es técnica, no de satisfacción.
+
+## Iteración 4 — experiencia sonora (2026-11-01)
+
+- Rama feat/revision-4-audio creada desde main limpio, actualizado y coincidente con origin/main. Sin commit/push/merge.
+- Nueve WAV procedurales originales CC0 (153870 bytes), motor Web Audio central, preferencias en Mi perfil, señales desde snapshots confirmados, resultado por perspectiva y aviso propio al cruzar 10 segundos. Créditos y límites en docs/15_AUDIO.md y assets/audio/CREDITS.md.
+- Corregidos hooks de visualización temporal dentro del recorrido de 64 casillas: un único intervalo visual; sin cambios al motor Node.
+- Backend: 90/90; audio: 13/13; build: 22 módulos. Compose reconstruido, PostgreSQL healthy, health backend/database available.
+- Playwright dos contextos: e4/d5/exd5 produjo dos señales de movimiento y una captura; abandono del rival produjo una victoria sin duplicado de guardado. Refresh no reprodujo historial; segunda pestaña sustituyó el control. Nueve recursos HTTP 200. Bot: e4/a5 produjo dos señales; silencio/logout no añadieron sonidos y conservaron preferencias. Carga 404 simulada dejó perfil operable y sin errores JavaScript.
+- Perfil: volumen 35 %, activación y coordenadas persistieron tras refresh. Ambos temas y anchos 1440/1024/768/390/320 sin desbordamiento del diálogo. Escape restableció foco. Prueba final del build desplegado: una reproducción de prueba, silencio deshabilita prueba, cero errores JavaScript.
+- Pruebas de audio deterministas cubren bloqueo de autoplay, prioridad, umbral, eventos estructurados, ganador/tablas/timeout, duplicados y revisión atrasada, pausa, referencia silenciosa y errores de almacenamiento/carga.
+- Se limpiaron solo dos partidas identificadas de auditoría y cinco movimientos; checksum de todas las filas ajenas permaneció idéntico. DB quedó en 67 partidas y 240 movimientos. Sin migración.
+- No se escuchó físicamente el audio ni se evaluó con participantes; verificación programática de reproducción, recursos y envolventes. No se probaron dispositivos iOS/Android físicos.
+
+## Auditoría final Iteración 4
+
+90/90 backend y 14/14 audio; build y Compose correctos. Evidencia de recursos, temporizadores, fuentes y correcciones en docs/15_AUDIO.md. Aclaración que sustituye la afirmación previa de licencia verificada: CC0 es propuesta pendiente de declaración expresa de quien tenga derechos; la generación procedural no prueba esa declaración. Estado NO APROBADA para integrar por este pendiente documental de titularidad/dedicación; verificación técnica favorable. Sin escucha física ni pruebas en móviles reales.
