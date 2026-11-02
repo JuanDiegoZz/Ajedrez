@@ -104,3 +104,7 @@ La app debe estar levantada y el dispositivo debe poder alcanzar el equipo anfit
 - [Progreso y evidencia](docs/14_PROGRESS.md)
 - [Guion de demo y checklist](docs/15_FINAL_DEMO.md)
 - [Árbol vigente](PROJECT_TREE.md)
+
+## Sonidos de partida
+
+Mi perfil permite activar sonidos, ajustar volumen (25 % inicial) y probarlo. Se reproducen solo eventos confirmados; refrescar o reconectar no repite historial. El navegador requiere interacción para habilitar audio. Preferencias locales sobreviven al logout. Detalles y licencias: [experiencia sonora](docs/15_AUDIO.md).

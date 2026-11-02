@@ -28,3 +28,5 @@ AVATARES DEL CLUB
 Avatares club.svg, knight.svg, rook.svg, bishop.svg, compass.svg y shield.svg.
 Diseño vectorial original de este proyecto, creado para la Iteración 3.
 Sin recursos externos ni atribuciones de terceros.
+
+Audio procedural generado con Codex (2026-11-01). CC0 propuesta; declaración del titular pendiente. Nueve efectos WAV. Créditos completos: /assets/audio/CREDITS.md. Generador: frontend/scripts/generate-audio.mjs. Sin muestras de terceros.

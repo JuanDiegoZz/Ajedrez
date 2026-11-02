@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarPicker } from './Avatar.jsx';
 
-export default function ProfileDialog({ profile, busy, logoutError, activeGame, coordinates, onCoordinates, onSave, onLogout, onClose }) {
+export default function ProfileDialog({ sound, onSound, onTestSound, profile, busy, logoutError, activeGame, coordinates, onCoordinates, onSave, onLogout, onClose }) {
   const ref = useRef(null);
   const [name, setName] = useState(profile.name);
   const [avatarId, setAvatarId] = useState(profile.avatarId ?? 'club');
@@ -32,6 +32,13 @@ export default function ProfileDialog({ profile, busy, logoutError, activeGame, 
       <div inert={activeGame ? '' : undefined}><AvatarPicker value={avatarId} onChange={setAvatarId} /></div>
       {activeGame && <p className="notice">Podrás cambiar tu nombre y avatar cuando termine la partida.</p>}
       <label className="preference-toggle"><input type="checkbox" checked={coordinates} onChange={(event) => onCoordinates(event.target.checked)} /> Mostrar coordenadas del tablero</label>
+      <fieldset className="sound-preferences"><legend>Sonido de la partida</legend>
+        <label className="preference-toggle"><input type="checkbox" checked={sound.enabled} onChange={event => onSound({ ...sound, enabled: event.target.checked })} /> Activar sonidos</label>
+        <label htmlFor="sound-volume">Volumen general · {Math.round(sound.volume * 100)} %</label>
+        <input id="sound-volume" type="range" min="0" max="100" step="1" value={Math.round(sound.volume * 100)} onChange={event => onSound({ ...sound, volume: Number(event.target.value) / 100 })} />
+        <button type="button" className="secondary-button" disabled={!sound.enabled || sound.volume === 0} onClick={onTestSound}>Probar sonido</button>
+        <small>El audio se activa al interactuar. Complementa las señales visuales.</small>
+      </fieldset>
       {error && <p role="alert" className="form-error">{error}</p>}
       {logoutError && <p role="alert" className="form-error">{logoutError}</p>}
       <div className="profile-actions"><button type="submit" className="primary-button" disabled={!changed || busy || activeGame}>{busy ? 'Guardando…' : 'Guardar cambios'}</button>

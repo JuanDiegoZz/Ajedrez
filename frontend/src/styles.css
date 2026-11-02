@@ -371,3 +371,7 @@ select:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
   .game-avatar { width: 1.45rem; height: 1.45rem; flex-basis: 1.45rem; }
   .player-clock { min-width: 4.25rem; font-size: .85rem; }
 }
+
+.sound-preferences { margin: 1rem 0; padding: .8rem; border: 1px solid var(--line); border-radius: .4rem; }
+.sound-preferences input[type="range"] { width: 100%; accent-color: var(--gold); padding: 0; min-height: 44px; }
+.sound-preferences small { display: block; margin-top: .5rem; }

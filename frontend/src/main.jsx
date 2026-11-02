@@ -6,6 +6,7 @@ import ProfileDialog from './ProfileDialog.jsx';
 import LogoutDialog from './LogoutDialog.jsx';
 import { Avatar, AvatarPicker } from './Avatar.jsx';
 import './styles.css';
+import { audio, readAudio, savePreference } from './audio.js';
 
 function readCoordinatesPreference() {
   try {
@@ -68,6 +69,22 @@ function App() {
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutError, setLogoutError] = useState('');
   const [coordinates, setCoordinates] = useState(readCoordinatesPreference);
+  const [sound, setSound] = useState(() => readAudio());
+  useEffect(() => { audio.configure(sound); }, [sound]);
+  useEffect(() => {
+    const unlock = () => { void audio.unlock(); };
+    const sync = (event) => { if (event.key === 'ajedrez_preferences_v1') setSound(readAudio()); };
+    document.addEventListener('pointerdown', unlock);
+    document.addEventListener('click', unlock);
+    document.addEventListener('keydown', unlock);
+    window.addEventListener('storage', sync);
+    return () => { document.removeEventListener('pointerdown', unlock); document.removeEventListener('click', unlock); document.removeEventListener('keydown', unlock); window.removeEventListener('storage', sync); audio.stop(); };
+  }, []);
+  useEffect(() => { audio.stop(); }, [session]);
+  function changeSound(next) {
+    setSound(next); audio.configure(next);
+    savePreference({ soundEnabled: next.enabled, soundVolume: next.volume });
+  }
   const dialogRef = useRef(null);
   const profileOpenerRef = useRef(null);
   const createOpenerRef = useRef(null);
@@ -117,7 +134,7 @@ function App() {
 
   function setCoordinatePreference(value) {
     setCoordinates(value);
-    try { localStorage.setItem('ajedrez_preferences_v1', JSON.stringify({ coordinates: value })); } catch { /* Preferences remain usable without storage. */ }
+    savePreference({ coordinates: value });
   }
 
   useEffect(() => {
@@ -555,7 +572,7 @@ function App() {
       </header>
 
       {profileMessage && <p className="profile-saved" role="status">{profileMessage}</p>}
-      {profileOpen && session && <ProfileDialog profile={session} busy={profileBusy || logoutBusy} logoutError={logoutError} activeGame={currentGame?.status === 'playing'} coordinates={coordinates} onCoordinates={setCoordinatePreference} onClose={() => setProfileOpen(false)} onSave={saveProfile} onLogout={requestLogout} />}
+      {profileOpen && session && <ProfileDialog sound={sound} onSound={changeSound} onTestSound={async () => { const epoch = identityEpochRef.current; await audio.unlock(); if (epoch === identityEpochRef.current && !document.hidden) audio.play('move'); }} profile={session} busy={profileBusy || logoutBusy} logoutError={logoutError} activeGame={currentGame?.status === 'playing'} coordinates={coordinates} onCoordinates={setCoordinatePreference} onClose={() => setProfileOpen(false)} onSave={saveProfile} onLogout={requestLogout} />}
       {logoutConfirm && <LogoutDialog busy={logoutBusy} error={logoutError} onCancel={() => setLogoutConfirm(false)} onConfirm={async () => {
         const epoch = identityEpochRef.current;
         setLogoutBusy(true); setLogoutError('');

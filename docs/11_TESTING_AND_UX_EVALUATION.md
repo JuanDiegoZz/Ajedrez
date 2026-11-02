@@ -100,3 +100,7 @@ Backend usa reloj inyectable para cubrir deadline exacto, callback obsoleto, dem
 `npm test` final: 89/89. Frontend `npm run build`: correcto. Compose reconstruido sin borrar volumen; PostgreSQL healthy y `/api/health` disponible. Playwright cubrió perfil/avatares, refresh, preferencias, logout, identidad nueva entre pestañas, respuesta PATCH retrasada, foco/escape, y medidas 1440/1024/768/390/320. Se comprobó consola limpia en flujo normal; el caso de cookie obsoleta produjo HTTP 410 esperado al rechazar una sesión revocada. PostgreSQL quedó en 66 partidas, 222 movimientos y 17 interrumpidas; la iteración no agrega migración.
 
 No se realizó prueba académica con estudiantes ni evaluación de satisfacción. La validación de UI es funcional/técnica.
+
+## Iteración 4 — validación sonora
+
+Ejecutar node --test frontend/test/audio.test.mjs (13 pruebas). Evidencia técnica de Playwright, límites de escucha/autoplay y pruebas de UI en docs/14_PROGRESS.md; diseño en docs/15_AUDIO.md. La invocación programática no acredita escucha física ni satisfacción.
